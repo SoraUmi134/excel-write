@@ -21,6 +21,8 @@ BLUE = ("accent1", 20, 80)
 BLUE_LINE = "2F6DB5"
 ARROW = ("accent2",)
 AW = 1.5
+GRAY = ("tx1", 50, 50)       # 「計画書を読んで従う」の点線
+NUM = ["1 体目", "2 体目", "3 体目"]
 RED = "FF0000"
 PURPLE = ("accent5",)
 LINK = ("accent4",)
@@ -75,6 +77,36 @@ def arrow(d, a, b, **kw):
     kw.setdefault("color", ARROW)
     kw.setdefault("lw", AW)
     d.connector(a, b, **kw)
+
+
+def reads(d, card, agent):
+    """計画書 → 係: 起こすのではなく、係が計画書を読んで従う（灰の点線）。"""
+    d.connector((card, 3), (agent, 1), color=GRAY, lw=1.25, dash="dash", name="計画書を読む")
+
+
+def spawn_bus(d, lane_x, top_y, targets, side=None):
+    """メインから係を起こす矢印。メインのバーから幹を下ろし、段ごとに枝を出して係の上へ入れる。
+    side=(箱, ✕を付けるか) は、幹から横へ枝を出す箱（使わない係など）。"""
+    ys = [t.y - 9 for t in targets]
+    bottom = max(ys + ([side[0].cy] if side else []))
+    d.connector((lane_x, top_y), (lane_x, bottom), color=ARROW, lw=AW, tail=False, name="起こす矢印の幹")
+    for t, y in zip(targets, ys):
+        d.connector((lane_x, y), (t.cx, y), color=ARROW, lw=AW, tail=False, name="起こす矢印の枝")
+        d.connector((t.cx, y), (t, 0), color=ARROW, lw=AW, name="起こす矢印")
+    if side:
+        box_, crossed = side
+        d.connector((lane_x, box_.cy), (box_, 3), color=ARROW, lw=AW, name="起こす矢印")
+        if crossed:
+            d.cross((lane_x + box_.x + box_.w) / 2, box_.cy, size=24)
+
+
+def arrow_legend(d, x, y):
+    """矢印の凡例。"""
+    with d.group("凡例"):
+        d.connector((x, y + 9), (x + 34, y + 9), color=ARROW, lw=AW, name="凡例の矢印")
+        d.text(x + 40, y, 120, 18, "起こす", size=10, font=UD, color="000000", wrap="none")
+        d.connector((x, y + 29), (x + 34, y + 29), color=GRAY, lw=1.25, dash="dash", name="凡例の点線")
+        d.text(x + 40, y + 20, 200, 18, "計画書を読んで従う", size=10, font=UD, color="000000", wrap="none")
 
 
 def number(d, cx, y, label):
@@ -140,15 +172,15 @@ def front_steps(d, cmds, MY, AY, nums, planner_lines):
 
 def plan_column(d, x, w, AY, planner, card_lines, num=None, num_xy=None):
     """計画書のカード 3 段（工程ごと）。計画係から 3 本の矢印。"""
-    d.text(x - 6, AY - 22, w + 60, 18, "工程ごとの計画書（画面の数だけある）", size=10, font=UD,
-           color="000000", wrap="none", name="計画書の説明")
+    d.text(x + 12, AY - 42, 140, 30, "工程ごとの計画書\n（画面の数だけある）", size=10, font=UD,
+           color="000000", name="計画書の説明")
     cards = []
     for k, st in enumerate(STAGES):
         cards.append(stack(d, x, AY + 80 * k, w, 58, card_lines(st), name=f"計画書（{st}）"))
     for c in cards:
         arrow(d, (planner, 3), (c, 1))
     if num:
-        number(d, *num_xy, num)
+        number(d, x - 12, AY - 32, num)
     return cards
 
 
@@ -176,8 +208,9 @@ def pattern1(Y0):
     ex = cmds[3].site(2)[0]
     arrow(d, (cmds[3], 2), (ex, MY))
     number(d, ex, MY - 46, "(7)")
-    d.text(1120, AY - 22, 400, 18, "方法論独自サブエージェント（.claude/agents/〇〇.md に置く）",
+    d.text(1145, AY - 40, 400, 18, "方法論独自サブエージェント（.claude/agents/〇〇.md に置く）",
            size=10, font=UD, color="000000", wrap="none", name="中継ぎ係の説明")
+    relays = []
     for k, st in enumerate(STAGES):
         relay = stack(d, 1120, AY + 80 * k, 170, 58,
                       [[("方法論独自サブエージェント", {"bold": True})], [(f"sdd-relay-{st}", {"color": PURPLE})],
@@ -185,15 +218,16 @@ def pattern1(Y0):
         child = box(d, 1330, AY + 80 * k + 4, 190, 50,
                     [[("子のサブエージェント", {"bold": True})], CHILDREN[st]], fill=BLUE, line=BLUE_LINE,
                     name=f"子の係（{st}）")
-        arrow(d, (cards[k], 3), (relay, 1))
+        reads(d, cards[k], relay)
         arrow(d, (relay, 3), (child, 1))
-    number(d, 1098, AY - 2, "(8)")
+        relays.append(relay)
+    exe = box(d, 925, AY + 250, 150, 52, [[("GSDのサブエージェント", {"bold": True})], "gsd-executor"],
+              name="使わない gsd-executor")
+    spawn_bus(d, 1101, MY + 41, relays, side=(exe, True))
+    number(d, 1101 + 18, MY + 42, "(8)")
     number(d, 1310, AY - 2, "(9)")
-    with d.group("使わない gsd-executor"):
-        exe = box(d, 925, AY + 250, 150, 52, [[("GSDのサブエージェント", {"bold": True})], "gsd-executor"])
-        arrow(d, (cards[2], 2), (exe, 0))
-        d.cross(1000, AY + 235, size=30)
-    d.text(1085, AY + 262, 300, 30, "agent_hint があるので\ngsd-executor は起きない", size=10, font=UD, color="000000")
+    d.text(1120, AY + 262, 300, 30, "agent_hint があるので\ngsd-executor は起きない", size=10, font=UD, color="000000")
+    arrow_legend(d, 1300, Y0 + 600)
     with d.group("位置づけ"):
         d.text(64, Y0 + 585, 340, 26, "この方法論自体はGSDとして提供されているもの。", size=14, font=UD, color="000000", wrap="none")
         link_tags(d, 64, Y0 + 615, ["p1_1", "p1_2", "p1_3", "p1_4"])
@@ -217,16 +251,18 @@ def pattern2(Y0):
     number(d, ex, MY - 46, "⑥")
     exes = []
     for k, st in enumerate(STAGES):
-        e = stack(d, 1065, AY + 80 * k, 140, 58, [[("GSDのサブエージェント", {"bold": True})], "gsd-executor"],
-                  name=f"gsd-executor（{st}）")
-        arrow(d, (cards[k], 3), (e, 1))
+        e = stack(d, 1080, AY + 80 * k, 140, 58,
+                  [[("GSDのサブエージェント", {"bold": True})], f"gsd-executor（{NUM[k]}）"],
+                  name=f"gsd-executor（{NUM[k]}）")
+        reads(d, cards[k], e)
         exes.append(e)
-    arrow(d, (exes[0].cx, MY + 41), (exes[0], 0))
+    spawn_bus(d, 1066, MY + 41, exes)
+    arrow_legend(d, 420, Y0 + 610)
     with d.group("使えない中継ぎ係"):
-        relay = box(d, 1218, AY, 166, 58, [[("方法論独自サブエージェント", {"bold": True})], "sdd-relay-build"],
+        relay = box(d, 1240, AY, 160, 58, [[("方法論独自サブエージェント", {"bold": True})], "sdd-relay-build"],
                     fill=BLUE, line=BLUE_LINE)
         d.cross(relay.cx, relay.cy, size=56)
-    skill = box(d, 1400, AY, 145, 58, [[("方法論独自SKILL.md", {"bold": True})], "「〇〇をして」"],
+    skill = box(d, 1410, AY, 138, 58, [[("方法論独自SKILL.md", {"bold": True})], "「〇〇をして」"],
                 fill=BLUE, line=BLUE_LINE)
     for target, n in ((relay, "⑦"), (skill, "⑧")):
         cx = target.cx
@@ -283,20 +319,21 @@ def pattern3(Y0):
     number(d, ex, MY - 46, "⑦")
     exes, skills = [], []
     for k, st in enumerate(STAGES):
-        e = stack(d, 1065, AY + 80 * k, 140, 58,
-                  [[("GSDのサブエージェント", {"bold": True})], "gsd-executor",
-                   [("＋追加のプロンプト", {"color": RED})]], name=f"gsd-executor（{st}）")
-        s = box(d, 1235, AY + 80 * k + 4, 150, 50,
+        e = stack(d, 1080, AY + 80 * k, 140, 58,
+                  [[("GSDのサブエージェント", {"bold": True})], f"gsd-executor（{NUM[k]}）",
+                   [("＋追加のプロンプト", {"color": RED})]], name=f"gsd-executor（{NUM[k]}）")
+        s = box(d, 1250, AY + 80 * k + 4, 145, 50,
                 [[("方法論独自 SKILL.md", {"bold": True})], f"{st} 用", "（Capability の skills）"],
                 fill=BLUE, line=BLUE_LINE, name=f"SKILL.md（{st}）")
-        arrow(d, (cards[k], 3), (e, 1))
+        reads(d, cards[k], e)
         arrow(d, (e, 3), (s, 1))
         exes.append(e)
         skills.append(s)
-    arrow(d, (exes[0].cx, MY + 41), (exes[0], 0))
-    number(d, exes[0].cx + 26, MY + 42, "⑧")
-    number(d, 1220, AY - 2, "⑨")
-    d.text(1215, AY - 22, 320, 18, "gsd-executor が sdd.stage を読み、自分で選んで読む", size=10, font=UD,
+    spawn_bus(d, 1066, MY + 41, exes)
+    number(d, 1066 + 18, MY + 42, "⑧")
+    number(d, 1236, AY - 2, "⑨")
+    arrow_legend(d, 330, Y0 + 622)
+    d.text(1240, AY - 40, 320, 18, "gsd-executor が sdd.stage を読み、自分で選んで読む", size=10, font=UD,
            color="000000", wrap="none", name="手引きの説明")
     legend = box(d, 560, AY + 250, 330, 54,
                  [[("方法論独自の追加のプロンプト（作る係へ。3 体すべてに同じ文）", {"bold": True})],
