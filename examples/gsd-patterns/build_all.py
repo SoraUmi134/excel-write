@@ -74,8 +74,10 @@ def stack(d, x, y, w, h, lines, fill=GREEN, line=GREEN_LINE, size=10, name="重�
 
 
 def arrow(d, a, b, **kw):
+    """サブエージェントを起こす（呼び出す）矢印（橙の実線）。"""
     kw.setdefault("color", ARROW)
     kw.setdefault("lw", AW)
+    kw.setdefault("name", "起こす矢印")
     d.connector(a, b, **kw)
 
 
@@ -149,9 +151,9 @@ def link_tags(d, x, y, keys):
         link_tag(d, x + i * 82, y, i + 1, k)
 
 
-def problem(d, x, y, w, h, title, body, to, keys):
+def problem(d, x, y, w, h, title, body, to, keys, name="吹き出し"):
     with d.group(title):
-        d.callout(x, y, w, h, [title, ""] + body, to=to)
+        d.callout(x, y, w, h, [title, ""] + body, to=to, name=name)
         if keys:
             link_tags(d, x + 8, y + h - 26, keys)
 
@@ -259,9 +261,10 @@ def pattern1(Y0):
     with d.group("位置づけ"):
         d.text(64, Y0 + 585, 340, 26, "この方法論自体はGSDとして提供されているもの。", size=14, font=UD, color="000000", wrap="none")
         link_tags(d, 64, Y0 + 615, ["p1_1", "p1_2", "p1_3", "p1_4"])
-    d.text(430, Y0 + 585, 470, 40,
-           "GSD は、計画書の agent_hint に書かれたサブエージェントを起こす。工程ごとに agent_hint が違うので、"
-           "工程に合ったサブエージェントが起きる（read の計画書なら sdd-relay-read）。", size=11, font=UD, color="000000",
+    d.text(430, Y0 + 582, 470, 50,
+           "GSD は、計画書の agent_hint に書かれたサブエージェントを起こす。\n"
+           "工程ごとに agent_hint が違うので、工程に合ったサブエージェントが起きる（read なら sdd-relay-read）。",
+           size=11, font=UD, color="000000",
            name="この形の要点")
     return d
 
@@ -294,20 +297,21 @@ def pattern2(Y0):
                 fill=BLUE, line=BLUE_LINE)
     for target, n in ((relay, "⑦"), (skill, "⑧")):
         cx = target.cx
-        d.text(cx - 54, Y0 + 112, 108, 22, "post（またはpre）", size=11, font=None, color="000000", align="ctr", wrap="none")
-        arrow(d, (cx, Y0 + 142.7), (target, 0))
+        d.text(cx - 54, Y0 + 112, 108, 22, "post（またはpre）", size=11, font=None, color="000000", align="ctr", wrap="none",
+               name="差し込みの印（重なり可）")
+        arrow(d, (cx, Y0 + 142.7), (target, 0), name="起こす矢印（横切り可）")
         number(d, cx + 26, MY + 42, n)
     problem(d, 880, Y0 + 690, 250, 110, "問題点1",
             ["GSDのサブエージェントが必ず動いてしまう。gsd-executorは実装なども行うため、勝手に欲しくもないコードが作られてしまう。",
              "", "こっちは、従わせられない方が問題。"],
-            to=(exes[2].cx + 20, exes[2].y + exes[2].h), keys=[])
+            to=(exes[2].cx + 20, exes[2].y + exes[2].h), keys=[], name="吹き出し（人の文）")
     with d.group("問題点2"):
         d.callout(1170, Y0 + 650, 316, 205,
                   ["問題点2", "",
                    "GSDのCapabilityにagents（サブエージェント）を定義しても、GSDがその定義ファイルを、.claude/agents/にコピーしてくれず、Claude Codeがサブエージェントを起こせない。",
                    "", "", "",
                    "ただし、2026/10/28にGSDのメンテナーが「修正する。ちゃんとGSDのagentsに置かれたものは、.claude/agents/に置かれるようにする」と表明。だが、まだ修正は未済。"],
-                  to=relay.site(2))
+                  to=relay.site(2), name="吹き出し（人の文）")
         link_tag(d, 1183, Y0 + 650 + 92, 1, "p2_2363")
         link_tag(d, 1265, Y0 + 650 + 92, 2, "p2_manifest")
         link_tag(d, 1347, Y0 + 650 + 92, 3, "p2_ship")
@@ -315,7 +319,7 @@ def pattern2(Y0):
     problem(d, 1580, AY - 10, 400, 112, "問題点3",
             ["独自SKILL.mdをGSDに定義すれば、それはClaude Codeで利用できるようになるが、あくまで独自SKILL.mdを呼ぶことができるのはメインエージェントのみ。",
              "", "（そもそも現時点ではできないが）独自サブエージェントを立ち上げたとしても、そのサブエージェントに独自のSKILL.mdを読ませることができない。"],
-            to=skill.site(3), keys=[])
+            to=skill.site(3), keys=[], name="吹き出し（人の文）")
     d.text(64, Y0 + 570, 330, 50, "計画書に agent_hint が無いので、GSD は\nどの工程の計画書でも、既定の gsd-executor を\n起こす。", size=11, font=UD,
            color="000000", name="この形の要点")
     return d
@@ -338,8 +342,8 @@ EXECUTOR_ADD = [[("gsd-executor への依頼文に書き足す文", {"bold": Tru
                 [("「sdd.stage を読み、その工程の", {"color": RED})],
                 [("手引きを読んでから作業せよ」", {"color": RED})]]
 
-WHY_P3 = ("考えた理由: 独自サブエージェントを案件に置くキット（方法論の部品一式）の手順は、GSD の版上げのたびに直す手間がかかる。"
-          "Capability に全部載せられれば、この手間が無くなる。")
+WHY_P3 = ("考えた理由: 独自サブエージェントを案件に置くキット（方法論の部品一式）の手順は、\n"
+          "GSD の版上げのたびに直す手間がかかる。Capability に全部載せられれば、この手間が無くなる。")
 
 
 def capability_box(d, MY, main):
@@ -389,7 +393,7 @@ def pattern3(Y0):
     d = Drawing(tag="pattern3", name="パターン3")
     _, _, MY, AY, RY, LANE, cap, prompt, cards, exes = p3_common(
         d, Y0, "パターン3（Capabilityに全部寄せ、gsd-executorに追加のプロンプトを渡す形）", P3_FRAME_H, 100)
-    d.text(52, Y0 + 70, 342, 40, WHY_P3, size=10, font=UD, color="000000", name="考えた理由")
+    d.text(52, Y0 + 68, 342, 58, WHY_P3, size=10, font=UD, color="000000", name="考えた理由")
     d.text(prompt.x + prompt.w + 12, prompt.y - 16, 300, 30,
            "メインが、起こす 3 体すべての依頼文に\n同じ文を書き足す", size=10, font=UD, color="000000", name="書き足しの説明")
     skills = []
@@ -416,12 +420,12 @@ def pattern3(Y0):
              "工程に必要な道具と手順を持つサブエージェントに任せられない。"],
             to=(exes[2].x + exes[2].w - 20, exes[2].y + exes[2].h), keys=["1689", "planmd"])
     problem(d, 1030, CB, 310, P3_CALLOUT_H, "問題点3",
-            ["gsd-executor はサブエージェントを起こせない（Agent ツールが無く、Capability でも足せない）。作った本人が点検するしかない。"
-             "Playwright MCP も無く、見た目の確かめ方は作り直しが要る。"],
+            ["gsd-executor はサブエージェントを起こせない（Agent ツールが無く、Capability でも足せない）。",
+             "作った本人が点検するしかない。Playwright MCP も無く、見た目の確かめ方は作り直しが要る。"],
             to=(exes[2].x + exes[2].w, exes[2].cy), keys=["tools", "firstparty"])
     problem(d, 1360, CB, 320, P3_CALLOUT_H, "問題点4",
-            ["GSD を案件ごとに入れると、Capability の手引き（SKILL.md）は .claude/skills/ に写されず、"
-             "サブエージェントが自動で読み込まない（1.20.0 で確認）。置き場所を依頼文で教える必要がある。"],
+            ["GSD を案件ごとに入れると、Capability の手引き（SKILL.md）は .claude/skills/ に写されない（1.20.0 で確認）。",
+             "サブエージェントは自動では読まないので、置き場所を依頼文で教える必要がある。"],
             to=skills[2].site(2), keys=["ship"])
     return d
 
@@ -498,7 +502,7 @@ P3B_ROWS = [
      "作った本人が点検するしかなく、見落としが残る", {"links": ["tools", "firstparty"]}],
     ["画面を開いて見た目を確かめる",
      "○ 子のサブエージェント（visual-verifier）が Playwright MCP で画面を操作しながら見る",
-     ("△ gsd-executor には Playwright MCP が無く、Capability でも足せない。Bash（コマンドの実行）で撮影スクリプトを動かせば撮れる", GOLD),
+     (["△ gsd-executor には Playwright MCP が無く、Capability でも足せない。", "Bash（コマンドの実行）で撮影スクリプトを動かせば撮れる"], GOLD),
      "見た目の確かめ方を、撮影スクリプトで撮って比べる形に作り直す必要がある", {"links": ["tools"]}],
     ["手引き（SKILL.md）を、サブエージェントが自動で読む場所に置く",
      "○ キットの導入の手順（gsd-setup）が .claude/skills/ に置く",
@@ -538,8 +542,8 @@ def pattern3b(Y0):
                        ("✕ の 1・3 は GSD の仕組みで決まっていて、Capability では変えられない。△ は補足として使う程度。", {})],
                       [("→ パターン1（agent_hint でサブエージェントを選ぶ形）のまま進め、Capability は検査と見張りに使う。", {})]],
                 size=11, font=UD, color="000000", align="l", anchor="ctr", ins=(10, 2, 8, 2), name="結論")
-        d.text(64, end_y + 64, 1300, 18,
-               "先の見込み: 「Capability に入れたサブエージェントも GSD が案件に置く」修正が承認済み（2026-10-28、未リリース）。"
+        d.text(64, end_y + 64, 1300, 32,
+               "先の見込み: 「Capability に入れたサブエージェントも GSD が案件に置く」修正が承認済み（2026-10-28、未リリース）。\n"
                "出れば、サブエージェントの配り方は Capability に寄せられる（選ぶのは agent_hint のまま）。",
                size=10, font=UD, color="000000", name="先の見込み")
         link_tag(d, 1375, end_y + 26, 1, "p2_5738")
