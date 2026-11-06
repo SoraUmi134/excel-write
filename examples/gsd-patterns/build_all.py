@@ -79,9 +79,28 @@ def arrow(d, a, b, **kw):
     d.connector(a, b, **kw)
 
 
+CMD = "404040"               # 人のコマンドでメインエージェントが動く（黒の実線）
+WRITE = ("accent3",)         # 計画書を書く（緑の実線）
+
+
+def command(d, a, b):
+    """人のコマンド → メインエージェント（黒の実線）。"""
+    d.connector(a, b, color=CMD, lw=AW, name="コマンド")
+
+
+def write(d, a, b):
+    """書く（緑の実線）。書く側 → 書かれる物。"""
+    d.connector(a, b, color=WRITE, lw=AW, name="書く")
+
+
+def read(d, a, b):
+    """読んで従う（灰の点線）。読む側 → 読まれる物。"""
+    d.connector(a, b, color=GRAY, lw=1.25, dash="dash", name="読む")
+
+
 def reads(d, card, agent):
-    """計画書 → 係: 起こすのではなく、係が計画書を読んで従う（灰の点線）。"""
-    d.connector((card, 3), (agent, 1), color=GRAY, lw=1.25, dash="dash", name="計画書を読む")
+    """係が計画書を読んで従う（灰の点線。係 → 計画書）。"""
+    read(d, (agent, 1), (card, 3))
 
 
 def spawn_bus(d, lane_x, top_y, targets, side=None):
@@ -100,13 +119,20 @@ def spawn_bus(d, lane_x, top_y, targets, side=None):
             d.cross((lane_x + box_.x + box_.w) / 2, box_.cy, size=24)
 
 
-def arrow_legend(d, x, y):
-    """矢印の凡例。"""
+LEGEND = [(CMD, AW, None, "人のコマンドで、メインエージェントが動く"),
+          (ARROW, AW, None, "サブエージェントを起こす（呼び出す）"),
+          (WRITE, AW, None, "計画書を書く"),
+          (GRAY, 1.25, "dash", "読んで従う（矢印の先の物を読む）")]
+
+
+def arrow_legend(d, x, y, extra=()):
+    """矢印の凡例。図の中で使う線の種類と必ず一致させる。extra=[(色, 太さ, 線種, 文, 文の色)]。"""
     with d.group("凡例"):
-        d.connector((x, y + 9), (x + 34, y + 9), color=ARROW, lw=AW, name="凡例の矢印")
-        d.text(x + 40, y, 340, 18, "メインエージェントがサブエージェントを起こす", size=10, font=UD, color="000000", wrap="none")
-        d.connector((x, y + 29), (x + 34, y + 29), color=GRAY, lw=1.25, dash="dash", name="凡例の点線")
-        d.text(x + 40, y + 20, 340, 18, "サブエージェントが計画書を読んで、その内容に従う", size=10, font=UD, color="000000", wrap="none")
+        rows = [r + ("000000",) for r in LEGEND] + list(extra)
+        for k, (color, lw, dash, label, tcolor) in enumerate(rows):
+            yy = y + 19 * k
+            d.connector((x, yy + 9), (x + 34, yy + 9), color=color, lw=lw, dash=dash, name="凡例の線")
+            d.text(x + 40, yy, 340, 18, label, size=10, font=UD, color=tcolor, wrap="none")
 
 
 def number(d, cx, y, label):
@@ -159,7 +185,7 @@ def front_steps(d, cmds, MY, AY, nums, planner_lines):
     """① ② ③ ④ ⑤: 案件を始める → 道のり案内、相談、計画書を書く → 計画係。"""
     rx, dx, px = (cmds[i].site(2)[0] for i in range(3))
     for c, x, n in ((cmds[0], rx, nums[0]), (cmds[1], dx, nums[2]), (cmds[2], px, nums[3])):
-        arrow(d, (c, 2), (x, MY))
+        command(d, (c, 2), (x, MY))
         number(d, x, MY - 46, n)
     road = box(d, rx - 52.7, AY, 105.4, 82, [[("サブエージェント", {"bold": True})], "gsd-roadmapper", "（道のり案内）"])
     arrow(d, (rx, MY + 41), (road, 0))
@@ -178,7 +204,7 @@ def plan_column(d, x, w, AY, planner, card_lines, num=None, num_xy=None, header_
     for k, st in enumerate(STAGES):
         cards.append(stack(d, x, AY + 80 * k, w, 58, card_lines(st), name=f"計画書（{st}）"))
     for c in cards:
-        arrow(d, (planner, 3), (c, 1))
+        write(d, (planner, 3), (c, 1))
     d.text(x, AY + 222, 172, 26, "read: 見本の読み取り　build: 画面作り\nvrt: 画面を撮って見本と比べる",
            size=9, font=UD, color="595959", name="工程の意味")
     if num:
@@ -208,7 +234,7 @@ def pattern1(Y0):
                                     [(f"sdd-relay-{st}", {"color": PURPLE})]],
                         "(6)", (900, AY + 10))
     ex = cmds[3].site(2)[0]
-    arrow(d, (cmds[3], 2), (ex, MY))
+    command(d, (cmds[3], 2), (ex, MY))
     number(d, ex, MY - 46, "(7)")
     d.text(1145, AY - 40, 400, 18, "方法論独自サブエージェント（.claude/agents/〇〇.md に置く）",
            size=10, font=UD, color="000000", wrap="none", name="中継ぎ係の説明")
@@ -229,7 +255,7 @@ def pattern1(Y0):
     number(d, 1101 + 18, MY + 42, "(8)")
     number(d, 1310, AY - 2, "(9)")
     d.text(1120, AY + 250, 330, 44, "計画書に agent_hint があるので、GSD 既定の\ngsd-executor は起きず、agent_hint に書いた\nサブエージェントが代わりに起きる", size=10, font=UD, color="000000")
-    arrow_legend(d, 1300, Y0 + 600)
+    arrow_legend(d, 1270, Y0 + 586)
     with d.group("位置づけ"):
         d.text(64, Y0 + 585, 340, 26, "この方法論自体はGSDとして提供されているもの。", size=14, font=UD, color="000000", wrap="none")
         link_tags(d, 64, Y0 + 615, ["p1_1", "p1_2", "p1_3", "p1_4"])
@@ -249,7 +275,7 @@ def pattern2(Y0):
     cards = plan_column(d, 905, 140, AY, planner,
                         lambda st: [[(f"計画書 PLAN.md（{st}）", {"bold": True})], "（agent_hint は無し）"])
     ex = cmds[3].site(2)[0]
-    arrow(d, (cmds[3], 2), (ex, MY))
+    command(d, (cmds[3], 2), (ex, MY))
     number(d, ex, MY - 46, "⑥")
     exes = []
     for k, st in enumerate(STAGES):
@@ -259,7 +285,7 @@ def pattern2(Y0):
         reads(d, cards[k], e)
         exes.append(e)
     spawn_bus(d, 1066, MY + 41, exes)
-    arrow_legend(d, 420, Y0 + 610)
+    arrow_legend(d, 420, Y0 + 586)
     with d.group("使えない中継ぎ係"):
         relay = box(d, 1240, AY, 160, 58, [[("方法論独自サブエージェント", {"bold": True})], "sdd-relay-build"],
                     fill=BLUE, line=BLUE_LINE)
@@ -319,7 +345,7 @@ WHY_P3 = ("考えた理由: 独自サブエージェントを案件に置くキ�
 def capability_box(d, MY, main):
     cap = box(d, 70, MY + 48, 300, 62, CAP_LINES, fill=BLUE, line=("accent1",), size=10,
               name="Capability", align="l")
-    arrow(d, (cap, 0), (main, 1))
+    read(d, (main, 1), (cap, 0))
     return cap
 
 
@@ -348,7 +374,7 @@ def p3_common(d, Y0, title, frame_h, RY_off):
                                     [(f"sdd.stage: {st}", {"color": RED})], "（agent_hint は無し）"],
                         "⑥", num_xy=(893, RY - 64), header_dx=36)
     ex = cmds[3].site(2)[0]
-    arrow(d, (cmds[3], 2), (ex, MY))
+    command(d, (cmds[3], 2), (ex, MY))
     number(d, ex, MY - 46, "⑦")
     prompt = box(d, LANE - 140, MY + 58, 280, 54, EXECUTOR_ADD, fill=BLUE, line=BLUE_LINE,
                  name="gsd-executor への書き足し")
@@ -371,7 +397,7 @@ def pattern3(Y0):
         s = box(d, 1250, RY + 80 * k + 4, 145, 50,
                 [[("方法論の手引き SKILL.md", {"bold": True})], f"{st} の工程用"],
                 fill=BLUE, line=BLUE_LINE, name=f"SKILL.md（{st}）")
-        arrow(d, (exes[k], 3), (s, 1))
+        read(d, (exes[k], 3), (s, 1))
         skills.append(s)
     number(d, 1236, RY - 2, "⑨")
     d.text(1240, RY - 30, 320, 18, "gsd-executor が自分で選んで読む", size=10, font=UD, color="000000",
@@ -402,7 +428,7 @@ def pattern3(Y0):
 
 # ---- パターン 3-B ----------------------------------------------------------
 RED_DASH = "FF0000"
-ORANGE = "C55A11"
+GOLD = "BF8F00"              # △（確実でない／作り直しが要る）。起こす矢印の橙と見分ける
 
 
 def badge(d, cx, cy, n, size=22):
@@ -422,7 +448,7 @@ def cannot(d, a, b, n, weak=False):
     """今の方法論では必要な線。できない所は赤の点線に ✕、確実でない所はオレンジの点線（✕ なし）。"""
     (x1, y1) = a[0].site(a[1])
     (x2, y2) = b[0].site(b[1])
-    d.connector(a, b, color=ORANGE if weak else RED_DASH, lw=1.5, dash="dash", name="できない線")
+    d.connector(a, b, color=GOLD if weak else RED_DASH, lw=1.5, dash="dash", name="できない線")
     mx, my = (x1 + x2) / 2, (y1 + y2) / 2
     if not weak:
         d.cross(mx, my, size=22, color=RED_DASH)
@@ -464,7 +490,7 @@ P3B_ROWS = [
      "工程に必要な道具・手順を持つサブエージェントに任せられない", {"links": ["1689", "planmd"]}],
     ["方法論の手順を、作業するサブエージェントに確実に伝える",
      "○ 独自サブエージェントのファイルに手順が書いてあり、起きた時点で必ず持っている",
-     ("△ メインエージェントが依頼文に書き足すのを当てにするしかなく、入る保証が無い", ORANGE),
+     ("△ メインエージェントが依頼文に書き足すのを当てにするしかなく、入る保証が無い", GOLD),
      "入らないと、gsd-executor は方法論の手順を知らずに作る", {"links": ["4139", "step275"]}],
     ["別のサブエージェントに点検させる",
      "○ 独自サブエージェントが Agent ツール（サブエージェントを起こす道具）で子を起こし、点検させる",
@@ -472,11 +498,11 @@ P3B_ROWS = [
      "作った本人が点検するしかなく、見落としが残る", {"links": ["tools", "firstparty"]}],
     ["画面を開いて見た目を確かめる",
      "○ 子のサブエージェント（visual-verifier）が Playwright MCP で画面を操作しながら見る",
-     ("△ gsd-executor には Playwright MCP が無く、Capability でも足せない。Bash（コマンドの実行）で撮影スクリプトを動かせば撮れる", ORANGE),
+     ("△ gsd-executor には Playwright MCP が無く、Capability でも足せない。Bash（コマンドの実行）で撮影スクリプトを動かせば撮れる", GOLD),
      "見た目の確かめ方を、撮影スクリプトで撮って比べる形に作り直す必要がある", {"links": ["tools"]}],
     ["手引き（SKILL.md）を、サブエージェントが自動で読む場所に置く",
      "○ キットの導入の手順（gsd-setup）が .claude/skills/ に置く",
-     ("△ GSD を案件ごとに入れると、Capability の手引きは .claude/skills/ に写されない（GSD 1.20.0 で確認）", ORANGE),
+     ("△ GSD を案件ごとに入れると、Capability の手引きは .claude/skills/ に写されない（GSD 1.20.0 で確認）", GOLD),
      "サブエージェントは手引きを自動では読まない。置き場所を依頼文で教えるしかない", {"links": ["ship"]}],
 ]
 P3B_ROW_H = 46
@@ -499,12 +525,9 @@ def pattern3b(Y0):
     for k, st in enumerate(STAGES):
         g = ghost(d, 1265, RY + 80 * k + 6, 240, 46, wants[st], name=f"今の方法論では必要な物（{st}）")
         cannot(d, (exes[k], 3), (g, 1), 4 if st == "vrt" else 3, weak=(st == "vrt"))
-    with d.group("凡例"):
-        arrow_legend(d, 56, RY + 150)
-        d.connector((56, RY + 199), (90, RY + 199), color=RED_DASH, lw=1.5, dash="dash", name="凡例の赤線")
-        d.text(96, RY + 190, 340, 18, "✕ 今の方法論では必要だが、できない", size=10, font=UD, color=RED_DASH, wrap="none")
-        d.connector((56, RY + 219), (90, RY + 219), color=ORANGE, lw=1.5, dash="dash", name="凡例のオレンジ線")
-        d.text(96, RY + 210, 340, 18, "△ できるが、確実でない／作り直しが要る", size=10, font=UD, color=ORANGE, wrap="none")
+    arrow_legend(d, 56, RY + 112, extra=[
+        (RED_DASH, 1.5, "dash", "✕ 今の方法論では必要だが、できない", RED_DASH),
+        (GOLD, 1.5, "dash", "△ できるが、確実でない／作り直しが要る", GOLD)])
     TY = RY + P3B_TABLE_Y
     cols = [("必要なこと", 270), ("今の方法論（パターン1）", 320), ("Capability だけ（パターン3）", 380),
             ("何が困るか", 330), ("根拠", 100)]
