@@ -378,14 +378,166 @@ def pattern3(Y0):
     return d
 
 
+# ---- パターン 3-B ----------------------------------------------------------
+P3B_FRAME_H = 880
+RED_DASH = "FF0000"
+
+
+def badge(d, cx, cy, n, size=22):
+    """赤い丸の番号。流れの中の「できない所」と、下の一覧表の行を結ぶ。"""
+    return d.shape(cx - size / 2, cy - size / 2, size, size, "ellipse", fill=RED_DASH, line=None,
+                   text=[[(str(n), {"bold": True, "color": "FFFFFF"})]], size=12, font=UD,
+                   ins=(0, 0, 0, 0), name=f"できない所 {n}")
+
+
+def ghost(d, x, y, w, h, lines, name):
+    """本当は要るが、この形ではできない物（灰の点線の箱）。"""
+    return d.shape(x, y, w, h, "roundRect", fill="F2F2F2", line="7F7F7F", lw=1, dash="dash", adj=8000,
+                   text=lines, size=10, font=YU, color="595959", ins=(4, 2, 4, 2), name=name)
+
+
+def cannot(d, a, b, n):
+    """本当は要る線（赤の点線）に ✕ と番号を付ける。"""
+    (x1, y1) = a[0].site(a[1]) if hasattr(a[0], "site") else a
+    (x2, y2) = b[0].site(b[1]) if hasattr(b[0], "site") else b
+    d.connector(a, b, color=RED_DASH, lw=1.5, dash="dash", name="できない線")
+    mx, my = (x1 + x2) / 2, (y1 + y2) / 2
+    d.cross(mx, my, size=22, color=RED_DASH)
+    badge(d, mx, my - 20, n)
+
+
+def table(d, x, y, cols, rows, row_h=34):
+    """図形で描く一覧表。cols=[(見出し, 幅)]、rows=[[セル, ...]]。セルは 文字列 か (文字列, 色)。
+    1 列目の先頭の数字は赤い丸の番号にする。"""
+    with d.group("一覧表"):
+        cx = x
+        for title, w in cols:
+            d.shape(cx, y, w, row_h, "rect", fill=("bg2",), line="A6A6A6", lw=0.75,
+                    text=[[(title, {"bold": True})]], size=11, font=UD, color="000000", name="表の見出し")
+            cx += w
+        for r, row in enumerate(rows):
+            ry = y + row_h * (r + 1)
+            cx = x
+            for c, ((title, w), cell) in enumerate(zip(cols, row)):
+                if isinstance(cell, dict):          # 参考リンクの札の並び
+                    d.shape(cx, ry, w, row_h, "rect", fill="FFFFFF", line="A6A6A6", lw=0.75, name="表のセル")
+                    for k, key in enumerate(cell["links"]):
+                        link_tag(d, cx + 6 + k * 82, ry + 7, k + 1, key)
+                else:
+                    text, color = cell if isinstance(cell, tuple) else (cell, "222222")
+                    d.shape(cx, ry, w, row_h, "rect", fill="FFFFFF", line="A6A6A6", lw=0.75,
+                            text=text, size=10, font=UD, color=color, align="l", ins=(30 if c == 0 else 6, 2, 4, 2),
+                            name="表のセル")
+                    if c == 0:
+                        badge(d, cx + 14, ry + row_h / 2, r + 1, size=20)
+                cx += w
+
+
+def pattern3b(Y0):
+    d = Drawing(tag="pattern3b", name="パターン3-B")
+    cmds, main, MY, AY = common(d, Y0, "パターン3-B（Capabilityに全部寄せると、何ができないか）",
+                                frame_h=P3B_FRAME_H)
+    RY = AY + 100
+    LANE = 1066
+    cap = box(d, 70, MY - 15.5, 300, 72,
+              [".gsd/capabilities/sdd-kit/capability.json",
+               [('"contributions": [ 計画係へ, 作る係へ ]', {"color": RED})],
+               [('"skills": [ read 用, build 用, vrt 用, … ]', {"color": RED})],
+               [('"gates" / "hooks"（今と同じ）', {"color": RED})]],
+              fill=BLUE, line=("accent1",), size=10, name="Capability", align="l")
+    arrow(d, (cap, 3), (main, 1))
+    badge(d, cap.x + cap.w - 12, cap.y + 46, 5)
+    planner, px = front_steps(d, cmds, MY, AY, ["①", "②", "③", "④", "⑤"],
+                              [[("サブエージェント", {"bold": True})], "gsd-planner", "（計画立案）"])
+    box(d, px - 165, AY + 74, 181, 74,
+        [[("方法論独自の追加のプロンプト", {"bold": True})], "（Capability の contribution）",
+         [("「PLAN.md に sdd.stage を書け」", {"color": RED})]],
+        fill=BLUE, line=BLUE_LINE, name="計画係への追加のプロンプト")
+    cards = plan_column(d, 905, 140, RY, planner,
+                        lambda st: [[(f"計画書 PLAN.md（{st}）", {"bold": True})],
+                                    [(f"sdd.stage: {st}", {"color": RED})], "（agent_hint は無し）"],
+                        "⑥", num_xy=(917, RY - 64), header_dx=36)
+    ex = cmds[3].site(2)[0]
+    arrow(d, (cmds[3], 2), (ex, MY))
+    number(d, ex, MY - 46, "⑦")
+    prompt = box(d, LANE - 150, MY + 60, 300, 70,
+                 [[("方法論独自の追加のプロンプト（作る係へ）", {"bold": True})],
+                  "（Capability の contribution）",
+                  [("「PLAN.md の sdd.stage を読み、", {"color": RED})],
+                  [("合う SKILL.md を読んでから作れ」", {"color": RED})]],
+                 fill=BLUE, line=BLUE_LINE, name="作る係への追加のプロンプト")
+    arrow(d, (LANE, MY + 41), (prompt, 0))
+    number(d, LANE - 24, MY + 40, "⑧")
+    badge(d, prompt.x + prompt.w + 14, prompt.y + 14, 2)
+    d.text(prompt.x + prompt.w + 30, prompt.y + 4, 280, 30,
+           "貼る枠が無い。3 体に届くかはメインの読み方次第", size=10, font=UD, color=RED_DASH,
+           name="できない所 2 の説明")
+    exes = []
+    for k, st in enumerate(STAGES):
+        e = stack(d, 1080, RY + 80 * k, 140, 58,
+                  [[("GSDのサブエージェント", {"bold": True})], f"gsd-executor（{NUM[k]}）",
+                   [("＋追加のプロンプト", {"color": RED})]], name=f"gsd-executor（{NUM[k]}）")
+        reads(d, cards[k], e)
+        exes.append(e)
+    spawn_bus(d, LANE, prompt.y + prompt.h, exes)
+    badge(d, LANE + 14, RY - 26, 1)
+    d.text(LANE + 28, RY - 35, 300, 18, "どの計画書でも同じ gsd-executor（係を選ぶ口が無い）",
+           size=10, font=UD, color=RED_DASH, wrap="none", name="できない所 1 の説明")
+    # 本当は要る物（パターン 1 で中継ぎ係が子の係にやらせていること）
+    wants = {
+        "read": ["本当は要る: 子の係 dna-extractor に", "モックを読ませ、監査役と直しを回す"],
+        "build": ["本当は要る: implementer と", "visual-verifier を最大 5 往復"],
+        "vrt": ["本当は要る: Playwright で画面を撮り、", "基準の画像と比べる"],
+    }
+    d.text(1300, RY - 15, 260, 16, "今の方法論で中継ぎ係がやっていること", size=10, font=UD,
+           color="595959", wrap="none", name="本当は要る物の説明")
+    for k, st in enumerate(STAGES):
+        g = ghost(d, 1300, RY + 80 * k + 2, 240, 54, wants[st], name=f"本当は要る物（{st}）")
+        cannot(d, (exes[k], 3), (g, 1), 4 if st == "vrt" else 3)
+    with d.group("位置づけ"):
+        d.text(56, Y0 + 520, 330, 52,
+               "この形は GSD の想定する使い方ではない。\n作る係の差し替えは agent_hint で行う、と\nGSD が決めている。",
+               size=12, font=UD, color="000000")
+        link_tags(d, 56, Y0 + 575, ["1689", "4740", "1143"])
+    with d.group("凡例"):
+        arrow_legend(d, 330, Y0 + 520)
+        d.connector((330, Y0 + 569), (364, Y0 + 569), color=RED_DASH, lw=1.5, dash="dash", name="凡例の赤線")
+        d.text(370, Y0 + 560, 280, 18, "本当は要るが、この形ではできない", size=10, font=UD, color=RED_DASH, wrap="none")
+    # 一覧表: 何ができないから、Capability だけには寄せられないのか
+    TY = RY + 270
+    d.text(64, TY - 30, 900, 24, "Capability に全部寄せたときに、できること・できないこと（赤い番号は上の図の場所）",
+           size=14, font=UD, color="000000", wrap="none", name="一覧表の見出し")
+    cols = [("方法論に要ること", 330), ("今の方法論（パターン1）", 330), ("Capability だけ（パターン3）", 470), ("根拠", 260)]
+    rows = [
+        ["計画書ごとに、作る係を選ぶ", "○ 計画書の agent_hint で中継ぎ係を選ぶ",
+         ("✕ 選ぶ口が無い。どの計画書も gsd-executor が作る", RED_DASH), {"links": ["1689", "planmd"]}],
+        ["方法論の手順を、作る係に確実に渡す", "○ 中継ぎ係のファイルそのものが手順",
+         ("△ 起こす文面に貼るだけ。貼る枠が無く、届く保証も無い", "C55A11"), {"links": ["4139", "step275"]}],
+        ["子の係を起こして、往復させる", "○ 中継ぎ係が Agent の道具で子を起こす",
+         ("✕ gsd-executor に Agent の道具が無く、足す方法も無い", RED_DASH), {"links": ["tools", "firstparty"]}],
+        ["画面を見て確かめる（Playwright）", "○ visual-verifier などの子が道具を持つ",
+         ("✕ gsd-executor に Playwright が無く、足す方法も無い", RED_DASH), {"links": ["tools"]}],
+        ["手引き（SKILL.md）を係の手元に置く", "○ キットの導入（gsd-setup）が置く",
+         ("△ 案件だけの導入（--local）では置かれない", "C55A11"), {"links": ["ship"]}],
+    ]
+    table(d, 64, TY, cols, rows)
+    concl_y = TY + 34 * (len(rows) + 1) + 10
+    d.shape(64, concl_y, 1390, 40, "rect", fill=("accent2", 20, 80), line=("accent2",), lw=1,
+            text=[[("結論: ", {"bold": True}),
+                   ("✕ の 3 つ（係を選ぶ・子を起こす・画面を見る）は、Capability の文章では埋められない。"
+                    "作る係の選び方は agent_hint（GSD が決めた正規の道）を残し、Capability は門・見張り・文章の差し込みに使う。", {})]],
+            size=12, font=UD, color="000000", align="l", ins=(10, 2, 8, 2), name="結論")
+    return d
+
+
 def move_cells(grid, end_y):
     """セル BB18 を空にし、B61 の「以上」を最後の図の下の行へ動かす。"""
     row = int(end_y * 12700 // grid.row_h) + 2
 
     def edit(sheet):
         sheet = re.sub(r'<row r="18"[^>]*><c r="BB18"[^>]*>.*?</c></row>', "", sheet)
-        sheet = sheet.replace('<row r="61" spans="2:2"><c r="B61" t="s"><v>0</v></c></row>',
-                              f'<row r="{row}" spans="2:2"><c r="B{row}" t="s"><v>0</v></c></row>')
+        sheet = re.sub(r'<row r="\d+" spans="2:2"><c r="B\d+" t="s"><v>0</v></c></row>',
+                       f'<row r="{row}" spans="2:2"><c r="B{row}" t="s"><v>0</v></c></row>', sheet)
         sheet = re.sub(r'<dimension ref="[^"]*"/>', f'<dimension ref="B{row}"/>', sheet)
         return sheet
     return edit
@@ -394,7 +546,8 @@ def move_cells(grid, end_y):
 if __name__ == "__main__":
     src, dst = sys.argv[1], sys.argv[2]
     grid = measure_grid(src)
-    drawings = [pattern1(Y_P1), pattern2(Y_P2), pattern3(Y_P3)]
+    Y_P3B = Y_P3 + 62 + P3_FRAME_H + 26 + 160 + 60
+    drawings = [pattern1(Y_P1), pattern2(Y_P2), pattern3(Y_P3), pattern3b(Y_P3B)]
     n = write_into(src, dst, drawings, grid=grid, replace_hand_drawn=True,
-                   sheet_edit=move_cells(grid, Y_P3 + 62 + P3_FRAME_H + 200))
-    print(f"書きました: {dst}（外した図 {n} 個、描いたパターン 3 つ）")
+                   sheet_edit=move_cells(grid, Y_P3B + 62 + P3B_FRAME_H + 20))
+    print(f"書きました: {dst}（外した図 {n} 個、描いたパターン {len(drawings)} つ）")
