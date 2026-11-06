@@ -294,7 +294,7 @@ def pattern2(Y0):
 
 
 # ---- パターン 3 ------------------------------------------------------------
-P3_FRAME_H = 670              # 追加のプロンプトの箱を起こす矢印の通り道に置くため、P1・P2 より縦に長い
+P3_FRAME_H = 650              # 追加のプロンプトの箱を起こす矢印の通り道に置くため、P1・P2 より縦に長い
 
 
 def pattern3(Y0):
@@ -351,10 +351,6 @@ def pattern3(Y0):
     number(d, 1236, RY - 2, "⑨")
     d.text(1240, RY - 40, 320, 18, "gsd-executor が sdd.stage を読み、自分で選んで読む", size=10, font=UD,
            color="000000", wrap="none", name="手引きの説明")
-    with d.group("使わない中継ぎ係"):
-        relay = box(d, 700, RY + 250, 166, 52, [[("方法論独自サブエージェント", {"bold": True})],
-                                                [("sdd-relay-build", {"color": RED})]], fill=BLUE, line=BLUE_LINE)
-        d.cross(relay.cx, relay.cy, size=52)
     with d.group("位置づけ"):
         d.text(56, Y0 + 520, 330, 52,
                "この形は GSD の想定する使い方ではない。\n作る係の差し替えは agent_hint で行う、と\nGSD が決めている。",
