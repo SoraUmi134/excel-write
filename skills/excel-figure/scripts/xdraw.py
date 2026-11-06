@@ -384,37 +384,72 @@ def _sheet_of_drawing(zin, drawing_part):
     return None
 
 
-def write_into(xlsx_in, xlsx_out, drawing, drawing_part="xl/drawings/drawing1.xml", anchor="cell"):
-    """xlsx_in の図（drawing_part）に drawing のまとまりを足して xlsx_out に書く。
-    anchor="cell" はセルに留める（人が描いた図と一緒に伸び縮みする。既定）。
+def measure_grid(xlsx, drawing_part="xl/drawings/drawing1.xml"):
+    """xlsx の既存の図から、セルの大きさ（CellGrid）を測る。人の図を外して描き直す前に呼ぶ。"""
+    with zipfile.ZipFile(xlsx) as z:
+        sheet = _sheet_of_drawing(z, drawing_part)
+        if not sheet:
+            return None
+        return CellGrid.measure(z.read(drawing_part).decode("utf-8"), z.read(sheet).decode("utf-8"))
+
+
+def _strip_untagged(drawing_xml):
+    """台本で足していない図（人が描いた図）をすべて外す。描き直すときだけ使う。"""
+    pat = re.compile(r"<xdr:(absoluteAnchor|oneCellAnchor|twoCellAnchor)\b.*?</xdr:\1>", re.S)
+    n = 0
+
+    def drop(m):
+        nonlocal n
+        if 'descr="xdraw:' in m.group(0):
+            return m.group(0)
+        n += 1
+        return ""
+    return pat.sub(drop, drawing_xml), n
+
+
+def write_into(xlsx_in, xlsx_out, drawings, drawing_part="xl/drawings/drawing1.xml", anchor="cell",
+               grid=None, replace_hand_drawn=False, sheet_edit=None):
+    """xlsx_in の図（drawing_part）に drawings（Drawing 1 つか list）のまとまりを足して xlsx_out に書く。
+    anchor="cell" はセルに留める（人が描いた図と一緒に伸び縮みする。既定）。grid を渡せばその大きさで留める。
     セルの大きさを測れないとき、または anchor="absolute" のときは位置で留める。
-    同じ目印のまとまり・リンクが既にあれば消してから足す。ほかの部品は変えない。
-    戻り値は消した古いまとまりの数。"""
+    同じ目印のまとまり・リンクが既にあれば消してから足す。
+    replace_hand_drawn=True のときは、人が描いた図（目印の無い図）も外す。先に measure_grid で grid を測っておくこと。
+    sheet_edit は sheet の XML を受け取って直した XML を返す関数（セルの文字を動かすときなど）。
+    ほかの部品は変えない。戻り値は外した図の数。"""
+    if not isinstance(drawings, (list, tuple)):
+        drawings = [drawings]
     rels_part = drawing_part.replace("drawings/", "drawings/_rels/") + ".rels"
     with zipfile.ZipFile(xlsx_in) as zin:
         names = zin.namelist()
         if drawing_part not in names:
             raise SystemExit(f"{drawing_part} がありません。先に Excel で図形を 1 つ置いてから使ってください。")
+        sheet = _sheet_of_drawing(zin, drawing_part)
         dxml = zin.read(drawing_part).decode("utf-8")
-        dxml, removed = _strip_tagged(dxml, drawing.tag)
-        used = [int(v) for v in re.findall(r'<xdr:cNvPr id="(\d+)"', dxml)] or [0]
+        if anchor == "cell" and grid is None and sheet:
+            grid = CellGrid.measure(dxml, zin.read(sheet).decode("utf-8"))
+        removed = 0
+        if replace_hand_drawn:
+            dxml, removed = _strip_untagged(dxml)
+        for d in drawings:
+            dxml, n = _strip_tagged(dxml, d.tag)
+            removed += n
         if not dxml.rstrip().endswith("</xdr:wsDr>"):
             raise SystemExit("drawing の終わりが想定と違う")
-        grid = None
-        if anchor == "cell":
-            sheet = _sheet_of_drawing(zin, drawing_part)
-            grid = CellGrid.measure(dxml, zin.read(sheet).decode("utf-8")) if sheet else None
-        dxml = dxml[: dxml.rfind("</xdr:wsDr>")] + drawing.anchor_xml(max(used) + 1, grid) + "</xdr:wsDr>"
         rels = zin.read(rels_part).decode("utf-8") if rels_part in names else None
-        new_rels = _rels_with_links(rels, drawing.tag, drawing.links)
+        for d in drawings:
+            used = [int(v) for v in re.findall(r'<xdr:cNvPr id="(\d+)"', dxml)] or [0]
+            dxml = dxml[: dxml.rfind("</xdr:wsDr>")] + d.anchor_xml(max(used) + 1, grid if anchor == "cell" else None) + "</xdr:wsDr>"
+            rels = _rels_with_links(rels, d.tag, d.links)
         with zipfile.ZipFile(xlsx_out, "w", zipfile.ZIP_DEFLATED) as zout:
             for info in zin.infolist():
                 data = zin.read(info.filename)
                 if info.filename == drawing_part:
                     data = dxml.encode("utf-8")
                 elif info.filename == rels_part:
-                    data = new_rels.encode("utf-8")
+                    data = rels.encode("utf-8")
+                elif sheet_edit and info.filename == sheet:
+                    data = sheet_edit(data.decode("utf-8")).encode("utf-8")
                 zout.writestr(info, data)
             if rels_part not in names:
-                zout.writestr(rels_part, new_rels.encode("utf-8"))
+                zout.writestr(rels_part, rels.encode("utf-8"))
     return removed

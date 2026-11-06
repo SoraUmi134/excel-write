@@ -11,7 +11,7 @@ Excel の説明図や、人に渡す文書を作るときのやり方と注意�
 | `skills/excel-figure/scripts/xdraw.py` | 図形を台本で組み立てて xlsx に書き込む部品（python3 の標準の部品だけで動く） |
 | `skills/excel-figure/scripts/render_drawing.py` | xlsx の図を PNG / SVG に描いて確かめる道具。図形の一覧も出せる |
 | `skills/doc-writing/` | 調べた結果を人に渡す文書（資料・根拠リンク集・図の中の短い文）を書くときの決まり |
-| `examples/gsd-patterns/` | 実例。「GSDに独自処理を挟む2つの方法.xlsx」に、人が描いたパターン 1・2 に合わせてパターン 3 を足した台本 |
+| `examples/gsd-patterns/` | 実例。`build_pattern3.py` は人が描いたパターン 1・2 に合わせてパターン 3 を足した台本。`build_all.py` は人の了承を得て 3 つのパターンを描き直し、計画書と係を複数描いた台本 |
 
 ## Claude Code で使う
 
@@ -29,7 +29,7 @@ ln -s ~/Develop/excel-write/skills/doc-writing ~/.claude/skills/doc-writing
 
 - python3
 - `rsvg-convert`（図を PNG にする。`brew install librsvg`）
-- LibreOffice（あれば、別のアプリでの見え方を確かめるのに使う）
+- Microsoft Excel（仕上がりを確かめる。無ければ LibreOffice で代わりに見る）
 
 ## 書き足し方
 
