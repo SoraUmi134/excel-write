@@ -104,9 +104,9 @@ def arrow_legend(d, x, y):
     """矢印の凡例。"""
     with d.group("凡例"):
         d.connector((x, y + 9), (x + 34, y + 9), color=ARROW, lw=AW, name="凡例の矢印")
-        d.text(x + 40, y, 120, 18, "起こす", size=10, font=UD, color="000000", wrap="none")
+        d.text(x + 40, y, 340, 18, "メインエージェントがサブエージェントを起こす", size=10, font=UD, color="000000", wrap="none")
         d.connector((x, y + 29), (x + 34, y + 29), color=GRAY, lw=1.25, dash="dash", name="凡例の点線")
-        d.text(x + 40, y + 20, 200, 18, "計画書を読んで従う", size=10, font=UD, color="000000", wrap="none")
+        d.text(x + 40, y + 20, 340, 18, "サブエージェントが計画書を読んで、その内容に従う", size=10, font=UD, color="000000", wrap="none")
 
 
 def number(d, cx, y, label):
@@ -172,13 +172,15 @@ def front_steps(d, cmds, MY, AY, nums, planner_lines):
 
 def plan_column(d, x, w, AY, planner, card_lines, num=None, num_xy=None, header_dx=12):
     """計画書のカード 3 段（工程ごと）。計画係から 3 本の矢印。num_xy で番号の置き場を変えられる。"""
-    d.text(x + header_dx, AY - 42, 120, 30, "工程ごとの計画書\n（画面の数だけある）", size=10, font=UD,
+    d.text(x + header_dx, AY - 42, 130, 30, "計画書は工程ごとに、\n画面 1 つにつき 1 枚", size=10, font=UD,
            color="000000", name="計画書の説明")
     cards = []
     for k, st in enumerate(STAGES):
         cards.append(stack(d, x, AY + 80 * k, w, 58, card_lines(st), name=f"計画書（{st}）"))
     for c in cards:
         arrow(d, (planner, 3), (c, 1))
+    d.text(x, AY + 222, 172, 26, "read: 見本の読み取り　build: 画面作り\nvrt: 画面を撮って見本と比べる",
+           size=9, font=UD, color="595959", name="工程の意味")
     if num:
         number(d, *(num_xy or (x - 12, AY - 32)), num)
     return cards
@@ -195,10 +197,10 @@ def pattern1(Y0):
         fill=BLUE, line=("accent1",), size=10, name="config.json", align="l")
     planner, px = front_steps(d, cmds, MY, AY, ["(1)", "(2)", "(3)", "(4)", "(5)"],
                               [[("サブエージェント", {"bold": True})], [("gsd-planner", {"color": RED})], "（計画立案）"])
-    box(d, px - 165, AY + 74, 181, 74,
+    box(d, px - 220, AY + 74, 236, 80,
         [[("sdd-planner", {"color": RED, "bold": True}), ("（SKILL.md）", {"bold": True})],
-         [("「PLAN.md の agent_hint に、", {"color": PURPLE})],
-         [("工程の中継ぎ係の名前を書け」", {"color": PURPLE})]],
+         [("「PLAN.md の agent_hint に、その工程の", {"color": PURPLE})],
+         [("方法論独自サブエージェントの名前を書け」", {"color": PURPLE})]],
         fill=BLUE, line=BLUE_LINE, name="sdd-planner の手引き")
     cards = plan_column(d, 925, 150, AY, planner,
                         lambda st: [[(f"計画書 PLAN.md（{st}）", {"bold": True})],
@@ -226,14 +228,14 @@ def pattern1(Y0):
     spawn_bus(d, 1101, MY + 41, relays, side=(exe, True))
     number(d, 1101 + 18, MY + 42, "(8)")
     number(d, 1310, AY - 2, "(9)")
-    d.text(1120, AY + 262, 300, 30, "agent_hint があるので\ngsd-executor は起きない", size=10, font=UD, color="000000")
+    d.text(1120, AY + 250, 330, 44, "計画書に agent_hint があるので、GSD 既定の\ngsd-executor は起きず、agent_hint に書いた\nサブエージェントが代わりに起きる", size=10, font=UD, color="000000")
     arrow_legend(d, 1300, Y0 + 600)
     with d.group("位置づけ"):
         d.text(64, Y0 + 585, 340, 26, "この方法論自体はGSDとして提供されているもの。", size=14, font=UD, color="000000", wrap="none")
         link_tags(d, 64, Y0 + 615, ["p1_1", "p1_2", "p1_3", "p1_4"])
     d.text(430, Y0 + 585, 470, 40,
-           "計画書ごとに agent_hint の係が起きる。工程が変わると、起きる中継ぎ係も変わる"
-           "（read → sdd-relay-read、vrt → sdd-relay-vrt）。", size=11, font=UD, color="000000",
+           "GSD は、計画書の agent_hint に書かれたサブエージェントを起こす。工程ごとに agent_hint が違うので、"
+           "工程に合ったサブエージェントが起きる（read の計画書なら sdd-relay-read）。", size=11, font=UD, color="000000",
            name="この形の要点")
     return d
 
@@ -288,99 +290,120 @@ def pattern2(Y0):
             ["独自SKILL.mdをGSDに定義すれば、それはClaude Codeで利用できるようになるが、あくまで独自SKILL.mdを呼ぶことができるのはメインエージェントのみ。",
              "", "（そもそも現時点ではできないが）独自サブエージェントを立ち上げたとしても、そのサブエージェントに独自のSKILL.mdを読ませることができない。"],
             to=skill.site(3), keys=[])
-    d.text(64, Y0 + 585, 320, 40, "どの工程の計画書でも、起きるのは\n同じ gsd-executor。", size=11, font=UD,
+    d.text(64, Y0 + 570, 330, 50, "計画書に agent_hint が無いので、GSD は\nどの工程の計画書でも、既定の gsd-executor を\n起こす。", size=11, font=UD,
            color="000000", name="この形の要点")
     return d
 
 
 # ---- パターン 3 ------------------------------------------------------------
-P3_FRAME_H = 650              # 追加のプロンプトの箱を起こす矢印の通り道に置くため、P1・P2 より縦に長い
+# 文は 1 項目 1〜2 行。流れ・✕・番号・表で伝え、説明の長文は図に入れない（人の指摘。2026-11-06）。
+P3_FRAME_H = 650
+P3_CALLOUT_H = 130
+
+CAP_LINES = [".gsd/capabilities/sdd-kit/capability.json",
+             [('"contributions": 依頼文に書き足す文', {"color": RED})],
+             [('"skills": 方法論の手引き SKILL.md', {"color": RED})],
+             [('"gates" / "hooks": 検査と見張り（今も使用中）', {"color": RED})]]
+
+PLANNER_ADD = [[("gsd-planner への依頼文に書き足す文", {"bold": True})],
+               [("「計画書に工程（sdd.stage）を書け」", {"color": RED})]]
+
+EXECUTOR_ADD = [[("gsd-executor への依頼文に書き足す文", {"bold": True})],
+                [("「sdd.stage を読み、その工程の", {"color": RED})],
+                [("手引きを読んでから作業せよ」", {"color": RED})]]
+
+WHY_P3 = ("考えた理由: 独自サブエージェントを案件に置くキット（方法論の部品一式）の手順は、GSD の版上げのたびに直す手間がかかる。"
+          "Capability に全部載せられれば、この手間が無くなる。")
+
+
+def capability_box(d, MY, main):
+    cap = box(d, 70, MY + 48, 300, 62, CAP_LINES, fill=BLUE, line=("accent1",), size=10,
+              name="Capability", align="l")
+    arrow(d, (cap, 0), (main, 1))
+    return cap
+
+
+def executor_column(d, cards, RY):
+    exes = []
+    for k, st in enumerate(STAGES):
+        e = stack(d, 1080, RY + 80 * k, 140, 58,
+                  [[("GSDのサブエージェント", {"bold": True})], f"gsd-executor（{NUM[k]}）",
+                   [("＋書き足された文", {"color": RED})]], name=f"gsd-executor（{NUM[k]}）")
+        reads(d, cards[k], e)
+        exes.append(e)
+    return exes
+
+
+def p3_common(d, Y0, title, frame_h, RY_off):
+    """パターン 3 と 3-B で同じ部分（コマンド・メイン・Capability・計画係・計画書・書き足す文・gsd-executor）。"""
+    cmds, main, MY, AY = common(d, Y0, title, frame_h=frame_h)
+    RY = AY + RY_off
+    LANE = 1066
+    cap = capability_box(d, MY, main)
+    planner, px = front_steps(d, cmds, MY, AY, ["①", "②", "③", "④", "⑤"],
+                              [[("サブエージェント", {"bold": True})], "gsd-planner", "（計画立案）"])
+    box(d, px - 205, AY + 74, 221, 44, PLANNER_ADD, fill=BLUE, line=BLUE_LINE, name="gsd-planner への書き足し")
+    cards = plan_column(d, 905, 140, RY, planner,
+                        lambda st: [[(f"計画書 PLAN.md（{st}）", {"bold": True})],
+                                    [(f"sdd.stage: {st}", {"color": RED})], "（agent_hint は無し）"],
+                        "⑥", num_xy=(893, RY - 64), header_dx=36)
+    ex = cmds[3].site(2)[0]
+    arrow(d, (cmds[3], 2), (ex, MY))
+    number(d, ex, MY - 46, "⑦")
+    prompt = box(d, LANE - 140, MY + 58, 280, 54, EXECUTOR_ADD, fill=BLUE, line=BLUE_LINE,
+                 name="gsd-executor への書き足し")
+    arrow(d, (LANE, MY + 41), (prompt, 0))
+    number(d, LANE - 24, MY + 40, "⑧")
+    exes = executor_column(d, cards, RY)
+    spawn_bus(d, LANE, prompt.y + prompt.h, exes)
+    return cmds, main, MY, AY, RY, LANE, cap, prompt, cards, exes
 
 
 def pattern3(Y0):
     d = Drawing(tag="pattern3", name="パターン3")
-    cmds, main, MY, AY = common(d, Y0, "パターン3（Capabilityに全部寄せ、gsd-executorに追加のプロンプトを渡す形）",
-                                frame_h=P3_FRAME_H)
-    RY = AY + 100               # 計画書から右の段は、追加のプロンプトの箱のぶん下げる
-    LANE = 1066                 # 起こす矢印の幹の通り道
-    cap = box(d, 70, MY - 15.5, 300, 72,
-              [".gsd/capabilities/sdd-kit/capability.json",
-               [('"contributions": [ 計画係へ, 作る係へ ]', {"color": RED})],
-               [('"skills": [ read 用, build 用, vrt 用, … ]', {"color": RED})],
-               [('"gates" / "hooks"（今と同じ）', {"color": RED})]],
-              fill=BLUE, line=("accent1",), size=10, name="Capability", align="l")
-    arrow(d, (cap, 3), (main, 1))
-    planner, px = front_steps(d, cmds, MY, AY, ["①", "②", "③", "④", "⑤"],
-                              [[("サブエージェント", {"bold": True})], "gsd-planner", "（計画立案）"])
-    box(d, px - 165, AY + 74, 181, 74,
-        [[("方法論独自の追加のプロンプト", {"bold": True})], "（Capability の contribution）",
-         [("「PLAN.md に sdd.stage を書け」", {"color": RED})]],
-        fill=BLUE, line=BLUE_LINE, name="計画係への追加のプロンプト")
-    cards = plan_column(d, 905, 140, RY, planner,
-                        lambda st: [[(f"計画書 PLAN.md（{st}）", {"bold": True})],
-                                    [(f"sdd.stage: {st}", {"color": RED})], "（agent_hint は無し）"],
-                        "⑥", num_xy=(917, RY - 64), header_dx=36)
-    ex = cmds[3].site(2)[0]
-    arrow(d, (cmds[3], 2), (ex, MY))
-    number(d, ex, MY - 46, "⑦")
-    # 起こす矢印の通り道に、作る係への追加のプロンプトを置く（3 体すべての起こす文面に貼られる）
-    prompt = box(d, LANE - 150, MY + 60, 300, 70,
-                 [[("方法論独自の追加のプロンプト（作る係へ）", {"bold": True})],
-                  "（Capability の contribution）",
-                  [("「PLAN.md の sdd.stage を読み、", {"color": RED})],
-                  [("合う SKILL.md を読んでから作れ」", {"color": RED})]],
-                 fill=BLUE, line=BLUE_LINE, name="作る係への追加のプロンプト")
-    arrow(d, (LANE, MY + 41), (prompt, 0))
-    number(d, LANE - 24, MY + 40, "⑧")
-    d.text(LANE + 160, MY + 52, 300, 30,
-           "メインが、3 体すべての起こす文面に\nこの文を貼ってから起こす",
-           size=10, font=UD, color="000000", name="追加のプロンプトの説明")
-    exes, skills = [], []
+    _, _, MY, AY, RY, LANE, cap, prompt, cards, exes = p3_common(
+        d, Y0, "パターン3（Capabilityに全部寄せ、gsd-executorに追加のプロンプトを渡す形）", P3_FRAME_H, 100)
+    d.text(52, Y0 + 70, 342, 40, WHY_P3, size=10, font=UD, color="000000", name="考えた理由")
+    d.text(prompt.x + prompt.w + 12, prompt.y - 16, 300, 30,
+           "メインが、起こす 3 体すべての依頼文に\n同じ文を書き足す", size=10, font=UD, color="000000", name="書き足しの説明")
+    skills = []
     for k, st in enumerate(STAGES):
-        e = stack(d, 1080, RY + 80 * k, 140, 58,
-                  [[("GSDのサブエージェント", {"bold": True})], f"gsd-executor（{NUM[k]}）",
-                   [("＋追加のプロンプト", {"color": RED})]], name=f"gsd-executor（{NUM[k]}）")
         s = box(d, 1250, RY + 80 * k + 4, 145, 50,
-                [[("方法論独自 SKILL.md", {"bold": True})], f"{st} 用", "（Capability の skills）"],
+                [[("方法論の手引き SKILL.md", {"bold": True})], f"{st} の工程用"],
                 fill=BLUE, line=BLUE_LINE, name=f"SKILL.md（{st}）")
-        reads(d, cards[k], e)
-        arrow(d, (e, 3), (s, 1))
-        exes.append(e)
+        arrow(d, (exes[k], 3), (s, 1))
         skills.append(s)
-    spawn_bus(d, LANE, prompt.y + prompt.h, exes)
     number(d, 1236, RY - 2, "⑨")
-    d.text(1240, RY - 40, 320, 18, "gsd-executor が sdd.stage を読み、自分で選んで読む", size=10, font=UD,
-           color="000000", wrap="none", name="手引きの説明")
+    d.text(1240, RY - 30, 320, 18, "gsd-executor が自分で選んで読む", size=10, font=UD, color="000000",
+           wrap="none", name="手引きの説明")
     with d.group("位置づけ"):
-        d.text(56, Y0 + 520, 330, 52,
-               "この形は GSD の想定する使い方ではない。\n作る係の差し替えは agent_hint で行う、と\nGSD が決めている。",
-               size=12, font=UD, color="000000")
-        link_tags(d, 56, Y0 + 575, ["1689", "4740", "1143"])
-    arrow_legend(d, 330, Y0 + 660)
-    CB = Y0 + 62 + P3_FRAME_H + 26     # 下の吹き出しの上端
-    problem(d, 1580, prompt.cy - 75, 380, 150, "問題点1",
-            ["作る係への追加のプロンプトは、GSD の手順書に「貼れ」と書いてあるだけで、貼る枠が無い。"
-             "メインが貼り忘れると届かない。GSD 自身も「文章での差し込みは効く保証が無い」と書いている。"],
+        d.text(56, Y0 + 540, 340, 30, "GSD が正式に用意した agent_hint を使わない、\nGSD の想定外の使い方", size=11, font=UD, color="000000")
+        link_tags(d, 56, Y0 + 576, ["1689", "4740", "1143"])
+    arrow_legend(d, 56, Y0 + 610)
+    CB = Y0 + 62 + P3_FRAME_H + 26
+    problem(d, 1580, prompt.cy - 60, 360, 120, "問題点2",
+            ["書き足しは、メインが手順書を読んで自分で入れる仕組みで、入る保証が無い。"
+             "入らないと、gsd-executor は方法論の手順を知らずに作る。"],
             to=prompt.site(3), keys=["4139", "step275"])
-    problem(d, 840, CB, 290, 160, "問題点2",
-            ["計画書ごとに作る係を選べない。read・build・vrt のどの計画書も、同じ gsd-executor が作る。"
-             "作業の切り替えは、gsd-executor が sdd.stage を読んで自分で手引きを選ぶ事に頼る。"
-             "GSD が agent_hint を作ったのは、ここを文章任せにしないため。"],
+    problem(d, 690, CB, 320, P3_CALLOUT_H, "問題点1",
+            ["read・build・vrt のどの計画書でも gsd-executor が起きる。"
+             "工程に必要な道具と手順を持つサブエージェントに任せられない。"],
             to=(exes[2].x + exes[2].w - 20, exes[2].y + exes[2].h), keys=["1689", "planmd"])
-    problem(d, 1150, CB, 270, 160, "問題点3",
-            ["vrt の計画書でも gsd-executor が作るが、gsd-executor の道具は変えられない。"
-             "Playwright が無いので画面を見る作業ができず、Agent が無いので子のサブエージェントも起こせない。"],
+    problem(d, 1030, CB, 310, P3_CALLOUT_H, "問題点3",
+            ["gsd-executor は別のサブエージェントを起こせず（Capability で足せない）、作った本人が点検するしかない。"
+             "画面を操作する道具も無く、見た目の確かめ方は作り直しが要る。"],
             to=(exes[2].x + exes[2].w, exes[2].cy), keys=["tools", "firstparty"])
-    problem(d, 1440, CB, 300, 160, "問題点4",
-            ["Capability の skills は、案件だけに入れた場合（--local）は .claude/skills/ に置かれない"
-             "（2026-11-05 に 1.20.0 で確認）。gsd-executor には .gsd/capabilities/ の中を直接 Read させる事になる。"],
+    problem(d, 1360, CB, 320, P3_CALLOUT_H, "問題点4",
+            ["GSD を案件ごとに入れると、手引き（skills）が自動で読む場所に置かれない（1.20.0 で確認）。"
+             "置き場所を依頼文で教える必要がある。"],
             to=skills[2].site(2), keys=["ship"])
     return d
 
 
 # ---- パターン 3-B ----------------------------------------------------------
-P3B_FRAME_H = 880
 RED_DASH = "FF0000"
+ORANGE = "C55A11"
+P3B_ROW_H = 40
 
 
 def badge(d, cx, cy, n, size=22):
@@ -391,142 +414,107 @@ def badge(d, cx, cy, n, size=22):
 
 
 def ghost(d, x, y, w, h, lines, name):
-    """本当は要るが、この形ではできない物（灰の点線の箱）。"""
+    """今の方法論では必要だが、この形ではできない物（灰の点線の箱）。"""
     return d.shape(x, y, w, h, "roundRect", fill="F2F2F2", line="7F7F7F", lw=1, dash="dash", adj=8000,
                    text=lines, size=10, font=YU, color="595959", ins=(4, 2, 4, 2), name=name)
 
 
-def cannot(d, a, b, n):
-    """本当は要る線（赤の点線）に ✕ と番号を付ける。"""
-    (x1, y1) = a[0].site(a[1]) if hasattr(a[0], "site") else a
-    (x2, y2) = b[0].site(b[1]) if hasattr(b[0], "site") else b
-    d.connector(a, b, color=RED_DASH, lw=1.5, dash="dash", name="できない線")
+def cannot(d, a, b, n, weak=False):
+    """今の方法論では必要な線。できない所は赤の点線に ✕、確実でない所はオレンジの点線（✕ なし）。"""
+    (x1, y1) = a[0].site(a[1])
+    (x2, y2) = b[0].site(b[1])
+    d.connector(a, b, color=ORANGE if weak else RED_DASH, lw=1.5, dash="dash", name="できない線")
     mx, my = (x1 + x2) / 2, (y1 + y2) / 2
-    d.cross(mx, my, size=22, color=RED_DASH)
+    if not weak:
+        d.cross(mx, my, size=22, color=RED_DASH)
     badge(d, mx, my - 20, n)
 
 
-def table(d, x, y, cols, rows, row_h=34):
-    """図形で描く一覧表。cols=[(見出し, 幅)]、rows=[[セル, ...]]。セルは 文字列 か (文字列, 色)。
-    1 列目の先頭の数字は赤い丸の番号にする。"""
+def table(d, x, y, cols, rows, row_h=34, head_h=30):
+    """図形で描く一覧表。cols=[(見出し, 幅)]、rows=[[セル, ...]]。セルは 文字列 か (文字列, 色) か {"links": [...]}。
+    1 列目には行の番号を赤い丸で付ける。"""
     with d.group("一覧表"):
         cx = x
         for title, w in cols:
-            d.shape(cx, y, w, row_h, "rect", fill=("bg2",), line="A6A6A6", lw=0.75,
+            d.shape(cx, y, w, head_h, "rect", fill=("bg2",), line="A6A6A6", lw=0.75,
                     text=[[(title, {"bold": True})]], size=11, font=UD, color="000000", name="表の見出し")
             cx += w
         for r, row in enumerate(rows):
-            ry = y + row_h * (r + 1)
+            ry = y + head_h + row_h * r
             cx = x
             for c, ((title, w), cell) in enumerate(zip(cols, row)):
-                if isinstance(cell, dict):          # 参考リンクの札の並び
+                if isinstance(cell, dict):
                     d.shape(cx, ry, w, row_h, "rect", fill="FFFFFF", line="A6A6A6", lw=0.75, name="表のセル")
                     for k, key in enumerate(cell["links"]):
-                        link_tag(d, cx + 6 + k * 82, ry + 7, k + 1, key)
+                        link_tag(d, cx + 4, ry + 2 + k * 18, k + 1, key)
                 else:
                     text, color = cell if isinstance(cell, tuple) else (cell, "222222")
                     d.shape(cx, ry, w, row_h, "rect", fill="FFFFFF", line="A6A6A6", lw=0.75,
-                            text=text, size=10, font=UD, color=color, align="l", ins=(30 if c == 0 else 6, 2, 4, 2),
-                            name="表のセル")
+                            text=text, size=10, font=UD, color=color, align="l", anchor="ctr",
+                            ins=(30 if c == 0 else 6, 2, 4, 2), name="表のセル")
                     if c == 0:
                         badge(d, cx + 14, ry + row_h / 2, r + 1, size=20)
                 cx += w
+        return y + head_h + row_h * len(rows)
+
+
+P3B_ROWS = [
+    ["工程ごとに合ったサブエージェントを起こす", "○ 計画書の agent_hint で指定できる",
+     ("✕ 指定できない。どの計画書でも gsd-executor が起きる", RED_DASH),
+     "工程に必要な道具・手順を持つサブエージェントに任せられない", {"links": ["1689", "planmd"]}],
+    ["方法論の手順を確実に伝える", "○ 独自サブエージェントのファイルに書いてある",
+     ("△ 依頼文への書き足し頼み。入る保証が無い", ORANGE),
+     "入らないと、方法論の手順を知らずに作る", {"links": ["4139", "step275"]}],
+    ["別のサブエージェントに点検させる", "○ 子のサブエージェントを起こして点検させる",
+     ("✕ gsd-executor は起こせない（道具が無く、足せない）", RED_DASH),
+     "作った本人が点検するしかなく、見落としが残る", {"links": ["tools", "firstparty"]}],
+    ["画面を開いて見た目を確かめる", "○ 画面を操作する道具を持つサブエージェントが確かめる",
+     ("△ その道具は無い。撮影のスクリプトを動かせば撮れる", ORANGE),
+     "見た目の確かめ方を、スクリプトで撮る形に作り直す必要がある", {"links": ["tools"]}],
+    ["手引き（SKILL.md）を手元に置く", "○ キットの導入の手順が置く",
+     ("△ GSD を案件ごとに入れると、手引きが置かれない（1.20.0 で確認）", ORANGE),
+     "置き場所を依頼文で教えるしかなく、届く保証が無い", {"links": ["ship"]}],
+]
+P3B_TABLE_Y = 262           # RY からの表の位置
+P3B_FRAME_H = 290 + 150 + P3B_TABLE_Y + 30 + P3B_ROW_H * len(P3B_ROWS) + 90
 
 
 def pattern3b(Y0):
     d = Drawing(tag="pattern3b", name="パターン3-B")
-    cmds, main, MY, AY = common(d, Y0, "パターン3-B（Capabilityに全部寄せると、何ができないか）",
-                                frame_h=P3B_FRAME_H)
-    RY = AY + 100
-    LANE = 1066
-    cap = box(d, 70, MY - 15.5, 300, 72,
-              [".gsd/capabilities/sdd-kit/capability.json",
-               [('"contributions": [ 計画係へ, 作る係へ ]', {"color": RED})],
-               [('"skills": [ read 用, build 用, vrt 用, … ]', {"color": RED})],
-               [('"gates" / "hooks"（今と同じ）', {"color": RED})]],
-              fill=BLUE, line=("accent1",), size=10, name="Capability", align="l")
-    arrow(d, (cap, 3), (main, 1))
-    badge(d, cap.x + cap.w - 12, cap.y + 46, 5)
-    planner, px = front_steps(d, cmds, MY, AY, ["①", "②", "③", "④", "⑤"],
-                              [[("サブエージェント", {"bold": True})], "gsd-planner", "（計画立案）"])
-    box(d, px - 165, AY + 74, 181, 74,
-        [[("方法論独自の追加のプロンプト", {"bold": True})], "（Capability の contribution）",
-         [("「PLAN.md に sdd.stage を書け」", {"color": RED})]],
-        fill=BLUE, line=BLUE_LINE, name="計画係への追加のプロンプト")
-    cards = plan_column(d, 905, 140, RY, planner,
-                        lambda st: [[(f"計画書 PLAN.md（{st}）", {"bold": True})],
-                                    [(f"sdd.stage: {st}", {"color": RED})], "（agent_hint は無し）"],
-                        "⑥", num_xy=(917, RY - 64), header_dx=36)
-    ex = cmds[3].site(2)[0]
-    arrow(d, (cmds[3], 2), (ex, MY))
-    number(d, ex, MY - 46, "⑦")
-    prompt = box(d, LANE - 150, MY + 60, 300, 70,
-                 [[("方法論独自の追加のプロンプト（作る係へ）", {"bold": True})],
-                  "（Capability の contribution）",
-                  [("「PLAN.md の sdd.stage を読み、", {"color": RED})],
-                  [("合う SKILL.md を読んでから作れ」", {"color": RED})]],
-                 fill=BLUE, line=BLUE_LINE, name="作る係への追加のプロンプト")
-    arrow(d, (LANE, MY + 41), (prompt, 0))
-    number(d, LANE - 24, MY + 40, "⑧")
-    badge(d, prompt.x + prompt.w + 14, prompt.y + 14, 2)
-    d.text(prompt.x + prompt.w + 30, prompt.y + 4, 280, 30,
-           "貼る枠が無い。3 体に届くかはメインの読み方次第", size=10, font=UD, color=RED_DASH,
-           name="できない所 2 の説明")
-    exes = []
-    for k, st in enumerate(STAGES):
-        e = stack(d, 1080, RY + 80 * k, 140, 58,
-                  [[("GSDのサブエージェント", {"bold": True})], f"gsd-executor（{NUM[k]}）",
-                   [("＋追加のプロンプト", {"color": RED})]], name=f"gsd-executor（{NUM[k]}）")
-        reads(d, cards[k], e)
-        exes.append(e)
-    spawn_bus(d, LANE, prompt.y + prompt.h, exes)
-    badge(d, LANE + 14, RY - 26, 1)
-    d.text(LANE + 28, RY - 35, 300, 18, "どの計画書でも同じ gsd-executor（係を選ぶ口が無い）",
-           size=10, font=UD, color=RED_DASH, wrap="none", name="できない所 1 の説明")
-    # 本当は要る物（パターン 1 で中継ぎ係が子の係にやらせていること）
+    _, _, MY, AY, RY, LANE, cap, prompt, cards, exes = p3_common(
+        d, Y0, "パターン3-B（パターン3 で、何ができないか）", P3B_FRAME_H, 150)
+    badge(d, cap.x + cap.w - 12, cap.y + 34, 5)
+    badge(d, prompt.x + prompt.w + 14, prompt.cy, 2)
+    badge(d, LANE + 14, prompt.y + prompt.h + 20, 1)
     wants = {
-        "read": ["本当は要る: 子の係 dna-extractor に", "モックを読ませ、監査役と直しを回す"],
-        "build": ["本当は要る: implementer と", "visual-verifier を最大 5 往復"],
-        "vrt": ["本当は要る: Playwright で画面を撮り、", "基準の画像と比べる"],
+        "read": ["今の方法論: 読み取る役と", "点検する役を別々に起こす"],
+        "build": ["今の方法論: 作る役と見た目を", "比べる役を往復させて直す"],
+        "vrt": ["今の方法論: 画面を操作する道具で", "撮り、見本の画像と比べる"],
     }
-    d.text(1300, RY - 15, 260, 16, "今の方法論で中継ぎ係がやっていること", size=10, font=UD,
-           color="595959", wrap="none", name="本当は要る物の説明")
     for k, st in enumerate(STAGES):
-        g = ghost(d, 1300, RY + 80 * k + 2, 240, 54, wants[st], name=f"本当は要る物（{st}）")
-        cannot(d, (exes[k], 3), (g, 1), 4 if st == "vrt" else 3)
-    with d.group("位置づけ"):
-        d.text(56, Y0 + 520, 330, 52,
-               "この形は GSD の想定する使い方ではない。\n作る係の差し替えは agent_hint で行う、と\nGSD が決めている。",
-               size=12, font=UD, color="000000")
-        link_tags(d, 56, Y0 + 575, ["1689", "4740", "1143"])
+        g = ghost(d, 1265, RY + 80 * k + 6, 240, 46, wants[st], name=f"今の方法論では必要な物（{st}）")
+        cannot(d, (exes[k], 3), (g, 1), 4 if st == "vrt" else 3, weak=(st == "vrt"))
     with d.group("凡例"):
-        arrow_legend(d, 330, Y0 + 520)
-        d.connector((330, Y0 + 569), (364, Y0 + 569), color=RED_DASH, lw=1.5, dash="dash", name="凡例の赤線")
-        d.text(370, Y0 + 560, 280, 18, "本当は要るが、この形ではできない", size=10, font=UD, color=RED_DASH, wrap="none")
-    # 一覧表: 何ができないから、Capability だけには寄せられないのか
-    TY = RY + 270
-    d.text(64, TY - 30, 900, 24, "Capability に全部寄せたときに、できること・できないこと（赤い番号は上の図の場所）",
-           size=14, font=UD, color="000000", wrap="none", name="一覧表の見出し")
-    cols = [("方法論に要ること", 330), ("今の方法論（パターン1）", 330), ("Capability だけ（パターン3）", 470), ("根拠", 260)]
-    rows = [
-        ["計画書ごとに、作る係を選ぶ", "○ 計画書の agent_hint で中継ぎ係を選ぶ",
-         ("✕ 選ぶ口が無い。どの計画書も gsd-executor が作る", RED_DASH), {"links": ["1689", "planmd"]}],
-        ["方法論の手順を、作る係に確実に渡す", "○ 中継ぎ係のファイルそのものが手順",
-         ("△ 起こす文面に貼るだけ。貼る枠が無く、届く保証も無い", "C55A11"), {"links": ["4139", "step275"]}],
-        ["子の係を起こして、往復させる", "○ 中継ぎ係が Agent の道具で子を起こす",
-         ("✕ gsd-executor に Agent の道具が無く、足す方法も無い", RED_DASH), {"links": ["tools", "firstparty"]}],
-        ["画面を見て確かめる（Playwright）", "○ visual-verifier などの子が道具を持つ",
-         ("✕ gsd-executor に Playwright が無く、足す方法も無い", RED_DASH), {"links": ["tools"]}],
-        ["手引き（SKILL.md）を係の手元に置く", "○ キットの導入（gsd-setup）が置く",
-         ("△ 案件だけの導入（--local）では置かれない", "C55A11"), {"links": ["ship"]}],
-    ]
-    table(d, 64, TY, cols, rows)
-    concl_y = TY + 34 * (len(rows) + 1) + 10
-    d.shape(64, concl_y, 1390, 40, "rect", fill=("accent2", 20, 80), line=("accent2",), lw=1,
-            text=[[("結論: ", {"bold": True}),
-                   ("✕ の 3 つ（係を選ぶ・子を起こす・画面を見る）は、Capability の文章では埋められない。"
-                    "作る係の選び方は agent_hint（GSD が決めた正規の道）を残し、Capability は門・見張り・文章の差し込みに使う。", {})]],
-            size=12, font=UD, color="000000", align="l", ins=(10, 2, 8, 2), name="結論")
+        arrow_legend(d, 56, RY + 150)
+        d.connector((56, RY + 199), (90, RY + 199), color=RED_DASH, lw=1.5, dash="dash", name="凡例の赤線")
+        d.text(96, RY + 190, 340, 18, "✕ 今の方法論では必要だが、できない", size=10, font=UD, color=RED_DASH, wrap="none")
+        d.connector((56, RY + 219), (90, RY + 219), color=ORANGE, lw=1.5, dash="dash", name="凡例のオレンジ線")
+        d.text(96, RY + 210, 340, 18, "△ できるが、確実でない／作り直しが要る", size=10, font=UD, color=ORANGE, wrap="none")
+    TY = RY + P3B_TABLE_Y
+    cols = [("必要なこと", 270), ("今の方法論（パターン1）", 300), ("Capability だけ（パターン3）", 350),
+            ("何が困るか", 360), ("根拠", 100)]
+    end_y = table(d, 64, TY, cols, P3B_ROWS, row_h=P3B_ROW_H)
+    with d.group("結論"):
+        d.shape(64, end_y + 12, 1300, 46, "rect", fill=("accent2", 20, 80), line=("accent2",), lw=1,
+                text=[[("結論: ", {"bold": True}),
+                       ("✕ の 1・3 は GSD の仕組みで決まっていて、Capability では変えられない。△ は補足として使う程度。", {})],
+                      [("→ パターン1（agent_hint でサブエージェントを選ぶ形）のまま進め、Capability は検査と見張りに使う。", {})]],
+                size=11, font=UD, color="000000", align="l", anchor="ctr", ins=(10, 2, 8, 2), name="結論")
+        d.text(64, end_y + 64, 1300, 18,
+               "先の見込み: 「Capability に入れたサブエージェントも GSD が案件に置く」修正が承認済み（2026-10-28、未リリース）。"
+               "出れば、サブエージェントの配り方は Capability に寄せられる（選ぶのは agent_hint のまま）。",
+               size=10, font=UD, color="000000", name="先の見込み")
+        link_tag(d, 1375, end_y + 26, 1, "p2_5738")
     return d
 
 
@@ -546,7 +534,7 @@ def move_cells(grid, end_y):
 if __name__ == "__main__":
     src, dst = sys.argv[1], sys.argv[2]
     grid = measure_grid(src)
-    Y_P3B = Y_P3 + 62 + P3_FRAME_H + 26 + 160 + 60
+    Y_P3B = Y_P3 + 62 + P3_FRAME_H + 26 + P3_CALLOUT_H + 60
     drawings = [pattern1(Y_P1), pattern2(Y_P2), pattern3(Y_P3), pattern3b(Y_P3B)]
     n = write_into(src, dst, drawings, grid=grid, replace_hand_drawn=True,
                    sheet_edit=move_cells(grid, Y_P3B + 62 + P3B_FRAME_H + 20))
