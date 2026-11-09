@@ -26,7 +26,7 @@ PURPLE = ("accent5",)
 UD = "BIZ UDGothic"
 YU = "Yu Gothic"
 Y0 = 0
-FRAME_W = 2262
+FRAME_W = 2382
 FRAME_H = 680
 
 
@@ -112,6 +112,35 @@ def legend(d, x, y):
                wrap="none")
 
 
+KID_GROUPS = {
+    "read": ("画面ごとに、読む → 監査（2〜3 画面ずつ同時に）",
+             [("① dna-extractor", "読む（主担当）"), ("② dna-extractor", "監査（別の回で確かめる）")], "→"),
+    "build": ("実装と確かめを別の係に分ける（合うまで最大 5 周）",
+              [("① implementer", "画面のコードを書く"), ("② visual-verifier", "撮ってお手本と比べる")], "⇄"),
+    "link": ("表を書く → 画面ごとにつなぐ → 押して確かめる",
+             [("① dna-extractor", "つなぎ表"), ("② implementer", "画面ごとにつなぐ"), ("③ visual-verifier", "押して確かめる")], "→"),
+}
+
+
+def kid_group(d, x, y, w, h, st):
+    """方法論の係が順に起こす子の係のまとまり（点線の枠）。中に、起こす順の番号つきで子の係を並べる。"""
+    label, kids, sep = KID_GROUPS[st]
+    with d.group(f"子の係（{st}）"):
+        frame = d.shape(x, y, w, h, "rect", fill="F3F7FC", line=BLUE_LINE, lw=1, dash="sysDash", name=f"子の係の枠（{st}）")
+        d.text(x + 4, y + 1, w - 8, 14, label, size=8, font=UD, color="404040", wrap="none", name="子の係の枠の説明")
+        n = len(kids)
+        gap = 18
+        bw = (w - 8 - gap * (n - 1)) / n
+        for i, (a, b) in enumerate(kids):
+            bx = x + 4 + i * (bw + gap)
+            box(d, bx, y + 17, bw, 42, [[(a, {"bold": True, "size": 8 if n == 3 else 9})], [(b, {"size": 8})]],
+                fill=BLUE, line=BLUE_LINE, name=f"子の係（{st}・{i + 1}）")
+            if i < n - 1:
+                d.text(bx + bw, y + 30, gap, 16, sep, size=11, font=UD, color="404040", align="ctr", wrap="none",
+                       name="起こす順の印")
+        return frame
+
+
 WAVE = {"prep": ("組1", "組 1 ／ 先に済む物: なし"), "read": ("組2", "組 2 ／ prep の後"),
         "build": ("組3〜4", "組3 共通 → 組4 画面ごと"), "link": ("組5", "組 5 ／ build 全部の後")}
 STAGES = [("prep", "最初の区切りだけ 1 枚"), ("read", "区切りで 1 枚"),
@@ -138,7 +167,7 @@ def build():
     # ---- コマンドの並び（人が打つ）----
     CY = Y0 + 100
     # コマンドの帯の幅は、その下の範囲（境目の縦の点線の間）にそろえる
-    BOUNDS = [330, 461, 860, 1330, 2082, FRAME_W + 26]
+    BOUNDS = [330, 461, 860, 1330, 2202, FRAME_W + 26]
     names = [("/gsd-new-project", "案件を始める"), ("/gsd-discuss-phase N", "画面の表を決める"),
              ("/gsd-plan-phase N", "計画書を書く"), ("/gsd-execute-phase N", "画面を作る"),
              ("/gsd-verify-work N", "受け入れ確認")]
@@ -151,7 +180,7 @@ def build():
     d.connector((56, Y0 + 164), (FRAME_W + 20, Y0 + 164), color=ARROW, lw=AW, tail=False, name="区切り線")
     d.text(60, Y0 + 164, 80, 24, "裏側の処理", size=12, font=None, color="000000", wrap="none")
     MY = Y0 + 205
-    d.shape(330, MY, 1952, 41, "roundRect", fill=GREEN, line=GREEN_LINE, adj=8000,
+    d.shape(330, MY, 2072, 41, "roundRect", fill=GREEN, line=GREEN_LINE, adj=8000,
             text="メインエージェント", size=14, font=UD, name="メインエージェント")
     MB = MY + 41
     xs = [c.site(2)[0] for c in cmds]
@@ -235,8 +264,8 @@ def build():
 
     # (4) execute → 中継ぎ係（agent_hint の名で起きる）→ 子の係 → 書く物
     RX, RW = 1372, 184
-    KX, KW = 1606, 196
-    FX, FW = 1850, 190
+    KX, KW = 1600, 326
+    FX, FW = 1970, 190
     relays, kids = [], {}
     for k, (st, _) in enumerate(STAGES):
         y = AY + 82 * k
@@ -249,7 +278,7 @@ def build():
                 name=f"対応の札（{st}）")
         out = box(d, FX, y + 4, FW, 50, OUTS[st], fill=BLUE, line=BLUE_LINE, name=f"書く物（{st}）")
         if KIDS[st]:
-            kid = box(d, KX, y + 2, KW, 54, KIDS[st], fill=BLUE, line=BLUE_LINE, name=f"子の係（{st}）")
+            kid = kid_group(d, KX, y - 4, KW, 64, st)
             spawn(d, (r, 3), (kid, 1))
             write(d, (kid, 3), (out, 1))
             kids[st] = kid
@@ -321,7 +350,7 @@ def callouts(d, p):
                   to=(p["exe"].cx, p["exe"].y + p["exe"].h), name="吹き出し")
     with d.group("要点3"):
         k = p["kids"]["build"]
-        d.callout(1637, p["frame_bottom"] + 30, 370, 120,
+        d.callout(1763, p["frame_bottom"] + 30, 370, 120,
                   ["要点3", "", "実装の係はモックの画像を開かない（見張りが止める）。モックは mock.digest.json の値で読み、visual-verifier が撮った画面とモックを比べて、合うまで直す。"],
                   to=(k.x + k.w - 4, k.y + k.h), name="吹き出し")
 
@@ -360,7 +389,7 @@ if __name__ == "__main__":
     build_io(d2, y2)
     # 図1 の点線の枠 → 図2 の枠の上（対応の線。枠の右を通す）
     mx, my = parts["map_from"]
-    lane_x = 2317
+    lane_x = 2437
     with d.group("図1 と図2 の対応"):
         d.connector((mx, my - 30), (lane_x, my - 30), color="1F3864", lw=1.25, dash="sysDot", tail=False, name="対応")
         d.connector((lane_x, my - 30), (lane_x, y2 + 100), color="1F3864", lw=1.25, dash="sysDot", tail=False, name="対応")
