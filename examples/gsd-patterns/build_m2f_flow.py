@@ -146,7 +146,7 @@ def kid_group(d, x, y, w, h, st):
 
 WAVE = {"prep": ("組1", "組 1 ／ 先に済む物: なし"), "read": ("組2", "組 2 ／ prep の後"),
         "build": ("組3〜4", "組3 共通 → 組4 画面ごと"), "link": ("組5", "組 5 ／ build 全部の後")}
-STAGES = [("prep", "最初の区切りだけ 1 枚"), ("read", "区切りで 1 枚"),
+STAGES = [("prep", "最初・モック変更時だけ 1 枚"), ("read", "区切りで 1 枚"),
           ("build", "画面ごとに 1 枚＋共通 1 枚"), ("link", "区切りで 1 枚")]
 KIDS = {"prep": None,
         "read": [[("子のサブエージェント", {"bold": True})], "dna-extractor（モックの読み取り）"],

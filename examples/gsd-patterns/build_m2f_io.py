@@ -2,7 +2,10 @@
 
 線の種類は 3 つ（読む・書く・返す）。凡例も同じ表（LEGEND2）から描く。
 """
-from build_m2f import (BLUE, BLUE_LINE, GRAY, UD, WRITE, YU, AW, box, read, write)
+try:
+    from build_m2f_flow import (BLUE, BLUE_LINE, GRAY, UD, WRITE, YU, AW, box, read, write)
+except ImportError:
+    from build_m2f import (BLUE, BLUE_LINE, GRAY, UD, WRITE, YU, AW, box, read, write)
 
 FILE_LINE = "2F6DB5"
 IMG = ("accent2", 20, 80)          # 画像のファイル（薄い橙）
