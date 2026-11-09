@@ -178,7 +178,7 @@ def build():
 
     # (2) discuss → 区切りの画面の表
     # メインが 2 つの決まりを読んで、2 つの書類を書く
-    rule_g = rule_doc(d, 488, AY - 6, 104, 56, [[("GSD の手順書", {"bold": True})], "discuss-phase の手順"],
+    rule_g = rule_doc(d, 470, AY - 6, 104, 56, [[("GSD の手順書", {"bold": True})], "discuss-phase の手順"],
                       GREEN, name="GSD の手順書")
     rule_k = rule_doc(d, 604, AY - 6, 118, 56, [[("キットの CLAUDE.md", {"bold": True})],
                                                 [("画面の表は SCREENS.md へ", {"color": "7030A0", "size": 8})]],
@@ -188,7 +188,7 @@ def build():
     screens = box(d, 606, AY + 100, 124, 58, [[("区切りの画面の表", {"bold": True})], "SCREENS.md"],
                   fill=BLUE, line=BLUE_LINE, name="SCREENS")
     # メインは決まりを読み（灰の点線）、書類を書く（緑。決まりの箱は通さない）
-    for rule, doc, wx in ((rule_g, context, 477), (rule_k, screens, 727)):
+    for rule, doc, wx in ((rule_g, context, 586), (rule_k, screens, 727)):   # 左で読み、右で書く
         read(d, (rule.cx, MB), (rule, 0))
         write(d, (wx, MB), (wx, doc.y))
 
