@@ -85,6 +85,8 @@ def legend(d, x, y):
         d.text(x + 40, yy + 24, 220, 18, "方法論（キット）が持つ物", size=10, font=UD, color="000000", wrap="none")
 
 
+WAVE = {"prep": ("組1", "組 1 ／ 先に済む物: なし"), "read": ("組2", "組 2 ／ prep の後"),
+        "build": ("組3〜4", "組3 共通 → 組4 画面ごと"), "link": ("組5", "組 5 ／ build 全部の後")}
 STAGES = [("prep", "最初の区切りだけ 1 枚"), ("read", "区切りで 1 枚"),
           ("build", "画面ごとに 1 枚＋共通 1 枚"), ("link", "区切りで 1 枚")]
 KIDS = {"prep": None,
@@ -166,11 +168,22 @@ def build():
     d.text(CX, AY - 40, 170, 30, "計画書は工程ごとに書く", size=10, font=UD, color="000000", name="計画書の説明")
     cards = []
     for k, (st, rule) in enumerate(STAGES):
-        lines = [[(f"計画書 PLAN.md（{st}）", {"bold": True})], [(f"agent_hint: sdd-relay-{st}", {"color": PURPLE})], rule]
+        lines = [[(f"計画書 PLAN.md（{st}）", {"bold": True})], [(f"agent_hint: sdd-relay-{st}", {"color": PURPLE})], rule,
+                 [(WAVE[st][1], {"bold": True, "color": "C55A11"})]]
         if st == "build":
-            cards.append(stack(d, CX, AY + 82 * k, CW, 58, lines, name=f"計画書（{st}）"))
+            cards.append(stack(d, CX, AY + 82 * k - 4, CW, 68, lines, name=f"計画書（{st}）"))
         else:
-            cards.append(box(d, CX, AY + 82 * k, CW, 58, lines, name=f"計画書（{st}）"))
+            cards.append(box(d, CX, AY + 82 * k - 4, CW, 68, lines, name=f"計画書（{st}）"))
+    with d.group("順番の決まり方"):
+        d.shape(520, AY + 282, 274, 140, "roundRect", fill="FFFFFF", line="C55A11", lw=1.25, adj=6000, align="l",
+                anchor="t", text=[[("順番はこう決まる", {"bold": True, "color": "C55A11", "size": 11})],
+                                  [("組（wave）＝いっしょに流す計画書のまとまり", {"color": "C55A11"})],
+                                  "① gsd-planner が計画書の頭に、組（wave）と",
+                                  "　先に済む物（depends_on）を書く",
+                                  "② execute は組の小さい順に計画書を流し、",
+                                  "　agent_hint の係を起こす（同じ組は同時に）",
+                                  "③ 組が済むたびに門②が確かめて、次の組へ"],
+                size=10, font=UD, ins=(6, 4, 4, 2), name="順番の決まり方")
     for c in cards:
         write(d, (planner, 3), (c, 1))
 
@@ -184,8 +197,8 @@ def build():
         lines = [[("方法論独自サブエージェント", {"bold": True})], [(f"sdd-relay-{st}", {"color": PURPLE})], "（計画書 1 枚に 1 体）"]
         r = (stack if st == "build" else box)(d, RX, y, RW, 58, lines, fill=BLUE, line=BLUE_LINE, name=f"中継ぎ係（{st}）")
         read(d, (r, 1), (cards[k], 3))
-        d.shape(r.x, r.y - 17, 70, 15, "roundRect", fill="1F3864", line=None, adj=30000,
-                text=[[(f"図2 {st}", {"bold": True})]], size=9, color="FFFFFF", font=YU, ins=(2, 0, 2, 0),
+        d.shape(r.x, r.y - 17, 112, 15, "roundRect", fill="1F3864", line=None, adj=30000,
+                text=[[(f"{WAVE[st][0]}  ・  図2 {st}", {"bold": True})]], size=9, color="FFFFFF", font=YU, ins=(2, 0, 2, 0),
                 name=f"対応の札（{st}）")
         out = box(d, FX, y + 4, FW, 50, OUTS[st], fill=BLUE, line=BLUE_LINE, name=f"書く物（{st}）")
         if KIDS[st]:
@@ -203,6 +216,8 @@ def build():
         relays.append(r)
     verifier = box(d, KX, AY + 82 * 4 + 10, KW, 58, [[("サブエージェント", {"bold": True})], "gsd-verifier",
                                                       "（区切りの目標を満たしたか）"], name="gsd-verifier")
+    d.shape(KX, verifier.y - 17, 112, 15, "roundRect", fill="1F3864", line=None, adj=30000,
+            text=[[("全部の組の後", {"bold": True})]], size=9, color="FFFFFF", font=YU, ins=(2, 0, 2, 0), name="対応の札（照合）")
     gate2 = box(d, CX, AY + 82 * 4 + 10, CW, 58, [[("係の結果を確かめる", {"bold": True})], "門②  gsd-wave-check"],
                 fill=BLUE, line=BLUE_LINE, name="門②")
     read(d, (gate2, 0), (cards[3], 2))
@@ -223,6 +238,8 @@ def build():
               name="直しの計画書")
     write(d, (uat, 2), (fix, 0))
 
+    d.text(RX, AY - 44, 200, 16, [[("上から順に起きる（組 1 → 組 5）↓", {"bold": True})]], size=10, font=UD,
+           color="C55A11", wrap="none", name="起きる順")
     # 図2 で詳しく描く所（execute の中の、工程ごとの方法論の係）を点線の枠で囲む
     fx0, fy0, fx1, fy1 = RX - 8, AY - 48, FX + FW + 10, AY + 82 * 3 + 66
     d.shape(fx0, fy0, fx1 - fx0, fy1 - fy0, "rect", fill=None, line="1F3864", lw=1.25, dash="sysDot",
@@ -238,7 +255,7 @@ def callouts(d, p):
     with d.group("要点1"):
         d.callout(330, FB + 30, 330, 92,
                   ["要点1", "", "m2f には、人が書類を承認して止まる場面が無い。区切りごとに、話し合いで画面の表を書き、(2) 〜 (5) を繰り返す。"],
-                  to=p["screens"].site(2), name="吹き出し")
+                  to=(p["screens"].x + 8, p["screens"].y + p["screens"].h), name="吹き出し")
     with d.group("要点2"):
         r = p["relays"][3]
         d.callout(925, FB + 30, 295, 110,
