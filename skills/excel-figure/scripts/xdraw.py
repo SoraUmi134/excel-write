@@ -60,7 +60,7 @@ class Shape:
             dx1 = min(w, h) * (self.adj if self.adj is not None else 50000) / 1e5
             x2 = x + (w - dx1) / 2
             return [(x2, y), (x, y + h / 2), (x2, y + h), (x + w, y + h / 2)][idx]
-        if self.prst in ("rect", "roundRect", "flowChartProcess", "snipRoundRect", "foldedCorner", "ellipse", "flowChartPredefinedProcess"):
+        if self.prst in ("rect", "roundRect", "flowChartProcess", "snipRoundRect", "foldedCorner", "ellipse", "flowChartPredefinedProcess", "flowChartDocument"):
             return [(x + w / 2, y), (x, y + h / 2), (x + w / 2, y + h), (x + w, y + h / 2)][idx]
         raise ValueError(f"{self.prst} のつなぎ目はこの道具では扱っていない")
 

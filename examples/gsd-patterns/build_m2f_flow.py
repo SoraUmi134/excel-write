@@ -84,6 +84,12 @@ def gate(d, x, y, w, h, lines, name="自動の検査"):
                        text=lines, size=10, font=YU, ins=(2, 2, 2, 2), name=name)
 
 
+def rule_doc(d, x, y, w, h, lines, fill, name):
+    """読むだけの決まり（手順書・CLAUDE.md・手引き）。紙の書類の形と点線の縁で、その場で作る物と分ける。"""
+    return d.shape(x, y, w, h, "flowChartDocument", fill=fill, line=("tx1", 35, 65), lw=1, dash="dash",
+                   text=lines, size=9, font=YU, ins=(3, 2, 3, 6), name=name)
+
+
 def legend(d, x, y):
     with d.group("凡例"):
         d.text(x, y - 24, 200, 20, [[("凡例", {"bold": True})]], size=11, font=UD, color="000000", wrap="none")
@@ -99,6 +105,9 @@ def legend(d, x, y):
         d.text(x, yy + 72, 280, 18, [[("紫の字", {"bold": True, "color": "7030A0"}), ("＝キットが GSD の流れを曲げる仕掛け", {})]],
                size=10, font=UD, color="000000", wrap="none", name="凡例（仕掛け）")
         d.shape(x, yy + 48, 34, 18, "flowChartPredefinedProcess", fill=BLUE, line=GATE_TAG, lw=1.25, name="凡例の形（自動の検査）")
+        rule_doc(d, x, yy + 96, 34, 20, "", "FFFFFF", name="凡例の形（読むだけの決まり）")
+        d.text(x + 40, yy + 97, 260, 18, "読むだけの決まり（手順書・CLAUDE.md・手引き）", size=10, font=UD, color="000000",
+               wrap="none")
         d.text(x + 40, yy + 48, 240, 18, "自動で動く検査（GSD の差し込み口から呼ばれる）", size=10, font=UD, color="000000",
                wrap="none")
 
@@ -168,27 +177,29 @@ def build():
     write(d, (road, 2), (roadmap, 0))
 
     # (2) discuss → 区切りの画面の表
-    # メインが 2 つの決まりに従って、2 つの書類を書く（決まりの箱は、書く矢印の途中に載せる）
-    rule_g = box(d, 472, AY, 122, 48, [[("GSD の手順書", {"bold": True})], "discuss-phase の手順"], name="GSD の手順書")
-    rule_k = box(d, 606, AY, 124, 48, [[("キットの CLAUDE.md", {"bold": True})],
-                                       [("画面の表は SCREENS.md へ", {"color": "7030A0", "size": 8})]],
-                 fill=BLUE, line=BLUE_LINE, name="キットの CLAUDE.md")
+    # メインが 2 つの決まりを読んで、2 つの書類を書く
+    rule_g = rule_doc(d, 488, AY - 6, 104, 56, [[("GSD の手順書", {"bold": True})], "discuss-phase の手順"],
+                      GREEN, name="GSD の手順書")
+    rule_k = rule_doc(d, 604, AY - 6, 118, 56, [[("キットの CLAUDE.md", {"bold": True})],
+                                                [("画面の表は SCREENS.md へ", {"color": "7030A0", "size": 8})]],
+                      BLUE, name="キットの CLAUDE.md")
     context = box(d, 472, AY + 100, 122, 58, [[("区切りの決め事", {"bold": True})], "CONTEXT.md",
                                              [("表は SCREENS.md を指す", {"size": 8})]], name="CONTEXT")
     screens = box(d, 606, AY + 100, 124, 58, [[("区切りの画面の表", {"bold": True})], "SCREENS.md"],
                   fill=BLUE, line=BLUE_LINE, name="SCREENS")
-    for rule, doc in ((rule_g, context), (rule_k, screens)):
-        d.connector((rule.cx, MB), (rule, 0), color=WRITE, lw=AW, tail=False, name="書く")
-        write(d, (rule, 2), (doc, 0))
+    # メインは決まりを読み（灰の点線）、書類を書く（緑。決まりの箱は通さない）
+    for rule, doc, wx in ((rule_g, context, 477), (rule_k, screens, 727)):
+        read(d, (rule.cx, MB), (rule, 0))
+        write(d, (wx, MB), (wx, doc.y))
 
     # (3) plan → gsd-planner（計画の手引きを読む）→ 計画書。計画書の形は門①が検査する
     PX = 815   # plan の範囲の左寄り（右は計画書のカード）
     planner = box(d, PX - 58, AY, 116, 58, [[("サブエージェント", {"bold": True})], "gsd-planner"], name="gsd-planner")
     spawn(d, (PX, MB), (planner, 0))
-    skill = box(d, PX - 68, AY + 100, 136, 70,
-                [[("計画の手引き", {"bold": True})], "sdd-planner（SKILL.md）",
-                 [("config.json の agent_skills", {"color": "7030A0", "size": 8})],
-                 [("で、GSD が持たせる", {"color": "7030A0", "size": 8})]], fill=BLUE, line=BLUE_LINE, name="sdd-planner")
+    skill = rule_doc(d, PX - 70, AY + 98, 140, 76,
+                     [[("計画の手引き", {"bold": True})], "sdd-planner（SKILL.md）",
+                      [("config.json の agent_skills", {"color": "7030A0", "size": 8})],
+                      [("で、GSD が持たせる", {"color": "7030A0", "size": 8})]], BLUE, name="sdd-planner")
     read(d, (planner, 2), (skill, 0))
     gate1 = gate(d, 744, AY + 204, 156, 54,
                  [[("書いた計画の形を確かめる", {"bold": True, "size": 9})], "門①  gsd-plan-check"], name="門①")
