@@ -93,7 +93,7 @@ KIDS = {"prep": None,
 OUTS = {"prep": [[("画面フォルダ", {"bold": True})], "mock.digest.json（モックの値）"],
         "read": [[("画面の読み取りの書類", {"bold": True})], "agent-os/specs/<画面>/"],
         "build": [[("画面のコード", {"bold": True})], "src/"],
-        "link": [[("画面の行き来をつなぐ", {"bold": True})], "src/（試作の画面遷移）"]}
+        "link": [[("画面どうしの仮のつなぎ", {"bold": True})], "src/prototype/（移動・引き継ぎ）"]}
 
 
 def build():
@@ -269,6 +269,9 @@ if __name__ == "__main__":
     blank_base(src, base)
     d, parts = build()
     callouts(d, parts)
-    write_into(base, out, [d], grid=grid)
+    from build_m2f_io import build_io
+    d2 = Drawing(tag="m2f-io", name="m2fの入出力")
+    build_io(d2, parts["frame_bottom"] + 170)
+    write_into(base, out, [d, d2], grid=grid)
     os.remove(base)
     print("書いた", out)
