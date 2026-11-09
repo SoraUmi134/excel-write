@@ -1,0 +1,274 @@
+"""運用 m2f（モックから画面を作る）の動きを、「GSDに独自処理を挟む3つの方法.xlsx」と同じ描き方で 1 枚の図にする台本。
+
+使い方: python3 build_m2f.py 見本.xlsx 出力.xlsx
+- 見本の xlsx から図とセルの文字を外した空の土台を作り、そこへ描く（セルの大きさは見本の図から測る）。
+- 線の種類は凡例の 5 つだけ。凡例も同じ表（LEGEND）から描く。
+"""
+import os
+import re
+import sys
+import zipfile
+
+sys.path.insert(0, os.path.expanduser("~/.claude/skills/excel-figure/scripts"))
+from xdraw import Drawing, measure_grid, write_into  # noqa: E402
+
+GREEN = ("accent6", 20, 80)      # GSD の物
+GREEN_LINE = ("accent3",)
+BLUE = ("accent1", 20, 80)       # 方法論（キット）の物
+BLUE_LINE = "2F6DB5"
+ARROW = ("accent2",)             # 起こす（橙）
+AW = 1.5
+GRAY = ("tx1", 50, 50)           # 読む（灰の点線）
+CMD = "404040"                   # コマンドで動く（黒）
+WRITE = ("accent3",)             # 書く（緑）
+NEXT = "7F7F7F"                  # 次の区切りへ（灰の実線）
+PURPLE = ("accent5",)
+UD = "BIZ UDGothic"
+YU = "Yu Gothic"
+Y0 = 0
+FRAME_W = 1790
+FRAME_H = 680
+
+
+def box(d, x, y, w, h, lines, fill=GREEN, line=GREEN_LINE, size=10, name="箱"):
+    return d.shape(x, y, w, h, "roundRect", fill=fill, line=line, lw=0.75, adj=8000, align="ctr",
+                   text=lines, size=size, font=YU, ins=(4, 2, 4, 2), name=name)
+
+
+def stack(d, x, y, w, h, lines, fill=GREEN, line=GREEN_LINE, name="重なった箱"):
+    """同じ物が複数あることを示す、重なったカード。前の 1 枚を返す。"""
+    with d.group(name):
+        for k in (2, 1):
+            d.shape(x + 4 * k, y + 3 * k, w, h, "roundRect", fill=fill, line=line, lw=0.75, adj=8000, name="重なり")
+        return box(d, x, y, w, h, lines, fill, line, 10, name)
+
+
+def command(d, a, b):
+    d.connector(a, b, color=CMD, lw=AW, name="コマンド")
+
+
+def spawn(d, a, b, name="起こす矢印"):
+    d.connector(a, b, color=ARROW, lw=AW, name=name)
+
+
+def write(d, a, b):
+    d.connector(a, b, color=WRITE, lw=AW, name="書く")
+
+
+def read(d, a, b):
+    d.connector(a, b, color=GRAY, lw=1.25, dash="dash", name="読む")
+
+
+def number(d, cx, y, label):
+    d.text(cx - 22, y, 44, 30, label, size=16, font=None, color="000000", align="ctr", name="番号")
+
+
+LEGEND = [(CMD, AW, None, "人のコマンドで、メインエージェントが動く"),
+          (ARROW, AW, None, "サブエージェントを起こす（呼び出す）"),
+          (WRITE, AW, None, "書く（矢印の先の物を作る）"),
+          (GRAY, 1.25, "dash", "読んで従う（矢印の先の物を読む）"),
+          (NEXT, AW, None, "次の区切りへ（(2) から繰り返す）")]
+
+
+def legend(d, x, y):
+    with d.group("凡例"):
+        d.text(x, y - 24, 200, 20, [[("凡例", {"bold": True})]], size=11, font=UD, color="000000", wrap="none")
+        for k, (color, lw, dash, label) in enumerate(LEGEND):
+            yy = y + 20 * k
+            d.connector((x, yy + 9), (x + 34, yy + 9), color=color, lw=lw, dash=dash, name="凡例の線")
+            d.text(x + 40, yy, 220, 18, label, size=10, font=UD, color="000000", wrap="none")
+        yy = y + 20 * len(LEGEND) + 6
+        box(d, x, yy, 34, 18, "", name="凡例の色（GSD）")
+        d.text(x + 40, yy, 220, 18, "GSD が持つ物（係・書類）", size=10, font=UD, color="000000", wrap="none")
+        box(d, x, yy + 24, 34, 18, "", fill=BLUE, line=BLUE_LINE, name="凡例の色（方法論）")
+        d.text(x + 40, yy + 24, 220, 18, "方法論（キット）が持つ物", size=10, font=UD, color="000000", wrap="none")
+
+
+STAGES = [("prep", "最初の区切りだけ 1 枚"), ("read", "区切りで 1 枚"),
+          ("build", "画面ごとに 1 枚＋共通 1 枚"), ("link", "区切りで 1 枚")]
+KIDS = {"prep": None,
+        "read": [[("子のサブエージェント", {"bold": True})], "dna-extractor（モックの読み取り）"],
+        "build": [[("子のサブエージェント", {"bold": True})], "implementer ⇄ visual-verifier", "（合うまで最大 5 周）"],
+        "link": [[("子のサブエージェント", {"bold": True})], "dna-extractor → implementer", "→ visual-verifier"]}
+OUTS = {"prep": [[("画面フォルダ", {"bold": True})], "mock.digest.json（モックの値）"],
+        "read": [[("画面の読み取りの書類", {"bold": True})], "agent-os/specs/<画面>/"],
+        "build": [[("画面のコード", {"bold": True})], "src/"],
+        "link": [[("画面の行き来をつなぐ", {"bold": True})], "src/（試作の画面遷移）"]}
+
+
+def build():
+    d = Drawing(tag="m2f", name="m2fの動き")
+    d.text(26, Y0 + 14, 1600, 56,
+           [[("m2f（モックから画面を作る運用）の動き", {})]],
+           size=28, font=None, color="000000", wrap="none", name="見出し")
+    d.text(620, Y0 + 26, 900, 30, "※ 区切り＝いっしょに作る画面の集まり。区切りごとに (2) 〜 (5) を繰り返す",
+           size=16, font=None, color="000000", wrap="none", name="見出しの注")
+    d.shape(34, Y0 + 62, FRAME_W, FRAME_H, "rect", fill=None, line=("tx2",), lw=2.25, name="枠")
+
+    # ---- コマンドの並び（人が打つ）----
+    CY = Y0 + 100
+    spec = [(330, 130, "/gsd-new-project", "案件を始める"),
+            (480, 140, "/gsd-discuss-phase N", "画面の表を決める"),
+            (640, 140, "/gsd-plan-phase N", "計画書を書く"),
+            (800, 785, "/gsd-execute-phase N", "画面を作る"),
+            (1620, 180, "/gsd-verify-work N", "受け入れ確認")]
+    cmds = [d.shape(x, CY, w, 60, "homePlate", fill=GREEN, line=GREEN_LINE, lw=0.75, adj=18000,
+                    text=[[(a, {"bold": True})], b], size=11, font=YU, align="ctr", ins=(2, 0, 9, 0),
+                    color="000000", name=a) for x, w, a, b in spec]
+    d.text(60, Y0 + 140, 160, 24, "人（入力するコマンド）", size=12, font=None, color="000000", wrap="none")
+    d.connector((56, Y0 + 164), (FRAME_W + 20, Y0 + 164), color=ARROW, lw=AW, tail=False, name="区切り線")
+    d.text(60, Y0 + 164, 80, 24, "裏側の処理", size=12, font=None, color="000000", wrap="none")
+    MY = Y0 + 205
+    d.shape(330, MY, 1470, 41, "roundRect", fill=GREEN, line=GREEN_LINE, adj=8000,
+            text="メインエージェント", size=14, font=UD, name="メインエージェント")
+    MB = MY + 41
+    xs = [c.site(2)[0] for c in cmds]
+    for c, x, n in zip(cmds, xs, ["(1)", "(2)", "(3)", "(4)", "(5)"]):
+        command(d, (c, 2), (x, MY))
+        number(d, x, MY - 46, n)
+    # 次の区切りへ（verify-work の上 → discuss の上）
+    vx, dxx = cmds[4].x + 40, xs[1]
+    with d.group("次の区切りへ"):
+        d.connector((vx, CY), (vx, CY - 14), color=NEXT, lw=AW, tail=False, name="次へ")
+        d.connector((vx, CY - 14), (dxx, CY - 14), color=NEXT, lw=AW, tail=False, name="次へ")
+        d.connector((dxx, CY - 14), (dxx, CY), color=NEXT, lw=AW, name="次へ")
+        d.text(1460, CY - 32, 150, 16, "次の区切りへ", size=9, font=UD, color="404040", wrap="none",
+               align="ctr", name="次の区切りへの説明")
+
+    AY = MY + 90
+    # 人が案件に置く物
+
+    # (1) new-project → gsd-roadmapper → 区切りの表
+    road = box(d, xs[0] - 55, AY, 110, 58, [[("サブエージェント", {"bold": True})], "gsd-roadmapper"], name="gsd-roadmapper")
+    spawn(d, (xs[0], MB), (road, 0))
+    roadmap = box(d, xs[0] - 55, AY + 100, 110, 58, [[("区切りの表", {"bold": True})], "ROADMAP.md"], name="ROADMAP")
+    write(d, (road, 2), (roadmap, 0))
+
+    # (2) discuss → 区切りの画面の表
+    screens = box(d, xs[1] - 62, AY + 100, 124, 58, [[("区切りの画面の表", {"bold": True})], "SCREENS.md"],
+                  fill=BLUE, line=BLUE_LINE, name="SCREENS")
+    write(d, (xs[1], MB), (screens, 0))
+
+    # (3) plan → gsd-planner（計画の手引きを読む）→ 計画書。計画書の形は門①が検査する
+    planner = box(d, xs[2] - 58, AY, 116, 58, [[("サブエージェント", {"bold": True})], "gsd-planner"], name="gsd-planner")
+    spawn(d, (xs[2], MB), (planner, 0))
+    skill = box(d, xs[2] - 68, AY + 100, 136, 58,
+                [[("計画の手引き", {"bold": True})], "sdd-planner（SKILL.md）"], fill=BLUE, line=BLUE_LINE, name="sdd-planner")
+    read(d, (planner, 2), (skill, 0))
+    gate1 = box(d, xs[2] - 68, AY + 200, 136, 58,
+                [[("書いた計画の形を確かめる", {"bold": True})], "門①  gsd-plan-check"], fill=BLUE, line=BLUE_LINE, name="門①")
+    read(d, (planner, 1), (screens, 3))
+    d.text(xs[2] - 68, AY + 260, 150, 16, "計画を書き終えると自動で流れる", size=9, font=UD, color="595959", wrap="none",
+           name="門①の説明")
+
+    CX, CW = 800, 160
+    d.text(CX, AY - 40, 170, 30, "計画書は工程ごとに書く", size=10, font=UD, color="000000", name="計画書の説明")
+    cards = []
+    for k, (st, rule) in enumerate(STAGES):
+        lines = [[(f"計画書 PLAN.md（{st}）", {"bold": True})], [(f"agent_hint: sdd-relay-{st}", {"color": PURPLE})], rule]
+        if st == "build":
+            cards.append(stack(d, CX, AY + 82 * k, CW, 58, lines, name=f"計画書（{st}）"))
+        else:
+            cards.append(box(d, CX, AY + 82 * k, CW, 58, lines, name=f"計画書（{st}）"))
+    for c in cards:
+        write(d, (planner, 3), (c, 1))
+
+    # (4) execute → 中継ぎ係（agent_hint の名で起きる）→ 子の係 → 書く物
+    RX, RW = 1010, 170
+    KX, KW = 1210, 175
+    FX, FW = 1440, 170
+    relays, kids = [], {}
+    for k, (st, _) in enumerate(STAGES):
+        y = AY + 82 * k
+        lines = [[("方法論独自サブエージェント", {"bold": True})], [(f"sdd-relay-{st}", {"color": PURPLE})], "（計画書 1 枚に 1 体）"]
+        r = (stack if st == "build" else box)(d, RX, y, RW, 58, lines, fill=BLUE, line=BLUE_LINE, name=f"中継ぎ係（{st}）")
+        read(d, (r, 1), (cards[k], 3))
+        out = box(d, FX, y + 4, FW, 50, OUTS[st], fill=BLUE, line=BLUE_LINE, name=f"書く物（{st}）")
+        if KIDS[st]:
+            kid = box(d, KX, y + 2, KW, 54, KIDS[st], fill=BLUE, line=BLUE_LINE, name=f"子の係（{st}）")
+            spawn(d, (r, 3), (kid, 1))
+            write(d, (kid, 3), (out, 1))
+            kids[st] = kid
+        else:
+            write(d, (r, 3), (out, 1))
+            mock = box(d, KX, AY - 40, KW, 30, [[("人が置いたモック", {"bold": True}), ("  mock.svg", {})]],
+                       fill=BLUE, line=BLUE_LINE, name="モック")
+            read(d, (r, 0), (mock, 1))
+            d.text(KX, y + 36, 175, 18, "（子は起こさず、自分で取り込む）", size=9, font=UD, color="595959",
+                   wrap="none", name="子なし")
+        relays.append(r)
+    verifier = box(d, KX, AY + 82 * 4 + 10, KW, 58, [[("サブエージェント", {"bold": True})], "gsd-verifier",
+                                                      "（区切りの目標を満たしたか）"], name="gsd-verifier")
+    gate2 = box(d, CX, AY + 82 * 4 + 10, CW, 58, [[("係の結果を確かめる", {"bold": True})], "門②  gsd-wave-check"],
+                fill=BLUE, line=BLUE_LINE, name="門②")
+    read(d, (gate2, 0), (cards[3], 2))
+    read(d, (gate1, 3), (cards[2], 1))
+    d.text(CX, AY + 82 * 4 + 70, 170, 16, "組が済むたびに自動で流れる", size=9, font=UD, color="595959", wrap="none",
+           name="門②の説明")
+    lane = RX - 22
+    with d.group("起こす矢印"):
+        d.connector((lane, MB), (lane, verifier.cy), color=ARROW, lw=AW, tail=False, name="起こす矢印の幹")
+        for t in relays + [verifier]:
+            spawn(d, (lane, t.cy), (t, 1), name="起こす矢印の枝")
+
+    # (5) verify-work → 人が動く画面を確かめる → 足りなければ直しの計画書
+    uat = box(d, xs[4] - 80, AY, 160, 58, [[("受け入れ確認", {"bold": True})], "人が動く画面を見て答える"],
+              name="受け入れ確認")
+    command(d, (xs[4], MB), (uat, 0))
+    fix = box(d, xs[4] - 80, AY + 100, 160, 58, [[("足りない所があれば", {"bold": True})], "直す計画書を作る（--gaps）"],
+              name="直しの計画書")
+    write(d, (uat, 2), (fix, 0))
+
+    legend(d, 60, MY + 60)
+    return d, dict(row4=AY + 82 * 4 + 10, screens=screens, relays=relays, kids=kids, frame_bottom=Y0 + 62 + FRAME_H)
+
+
+def callouts(d, p):
+    FB = p["frame_bottom"]
+    with d.group("要点1"):
+        d.callout(330, FB + 30, 330, 92,
+                  ["要点1", "", "m2f には、人が書類を承認して止まる場面が無い。区切りごとに、話し合いで画面の表を書き、(2) 〜 (5) を繰り返す。"],
+                  to=p["screens"].site(2), name="吹き出し")
+    with d.group("要点2"):
+        r = p["relays"][3]
+        d.callout(925, FB + 30, 295, 110,
+                  ["要点2", "", "GSD は計画書の agent_hint を見て、既定の gsd-executor の代わりに、方法論独自のサブエージェントを起こす。"],
+                  to=(r.cx, r.y + r.h), name="吹き出し")
+    with d.group("要点3"):
+        k = p["kids"]["build"]
+        d.callout(1240, p["frame_bottom"] + 30, 400, 110,
+                  ["要点3", "", "実装の係はモックの画像を開かない（見張りが止める）。モックは mock.digest.json の値で読み、visual-verifier が撮った画面とモックを比べて、合うまで直す。"],
+                  to=(k.x + k.w - 4, k.y + k.h), name="吹き出し")
+
+
+def blank_base(src, out):
+    """見本の xlsx から図とセルの文字を外し、シート名を変えた土台を作る。"""
+    with zipfile.ZipFile(src) as z, zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as o:
+        for info in z.infolist():
+            data = z.read(info.filename)
+            if info.filename == "xl/drawings/drawing1.xml":
+                s = re.sub(r"<xdr:(absoluteAnchor|oneCellAnchor|twoCellAnchor)\b.*?</xdr:\1>", "",
+                           data.decode("utf-8"), flags=re.S)
+                data = s.encode("utf-8")
+            elif info.filename == "xl/drawings/_rels/drawing1.xml.rels":
+                data = re.sub(r"<Relationship [^>]*/>", "", data.decode("utf-8")).encode("utf-8")
+            elif info.filename == "xl/worksheets/sheet1.xml":
+                s = re.sub(r"<sheetData>.*?</sheetData>", "<sheetData/>", data.decode("utf-8"), flags=re.S)
+                s = re.sub(r"<mergeCells.*?</mergeCells>", "", s, flags=re.S)
+                data = s.encode("utf-8")
+            elif info.filename == "xl/workbook.xml":
+                s = re.sub(r'(<sheet [^>]*name=")[^"]*(")', r"\1m2fの動き\2", data.decode("utf-8"), count=1)
+                data = s.encode("utf-8")
+            o.writestr(info, data)
+
+
+if __name__ == "__main__":
+    src, out = sys.argv[1], sys.argv[2]
+    grid = measure_grid(src)
+    base = out + ".base.xlsx"
+    blank_base(src, base)
+    d, parts = build()
+    callouts(d, parts)
+    write_into(base, out, [d], grid=grid)
+    os.remove(base)
+    print("書いた", out)
