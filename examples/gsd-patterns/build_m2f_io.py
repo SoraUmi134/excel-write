@@ -79,13 +79,19 @@ def legend2(d, x, y):
             d.text(x + 40, yy + 22 * k, 260, 18, label, size=10, font=UD, color="000000", wrap="none")
 
 
+def tag(d, x, y, text, w=96, name="対応の札"):
+    return d.shape(x, y, w, 16, "roundRect", fill="1F3864", line=None, adj=30000, text=[[(text, {"bold": True})]],
+                   size=9, color="FFFFFF", font=YU, ins=(2, 0, 2, 0), name=name)
+
+
 def lane_title(d, y, h, title, sub):
-    box(d, 60, y + 8, 128, h - 16, [[(title, {"bold": True, "size": 13})], sub], fill=("bg1", 5, 95),
-        line=("tx1", 50, 50), name=f"段の名前（{title}）")
+    lines = [[(title, {"bold": True, "size": 13})]] + sub.split("\n")
+    box(d, 60, y + 8, 128, h - 16, lines, fill=("bg1", 5, 95), line=("tx1", 50, 50), name=f"段の名前（{title}）")
+    tag(d, 64, y + 12, f"図1 (4) の {title}", w=120, name=f"対応の札（{title}）")
 
 
 def build_io(d, Y):
-    d.text(26, Y + 14, 1700, 40, [[("工程ごとに、係へ何を渡し、何が返るか（方法論の工夫）", {})]],
+    d.text(26, Y + 14, 1700, 40, [[("図2　図1 の点線の枠（(4) execute の中）を、工程ごとに詳しく — 係へ何を渡し、何が返るか", {})]],
            size=24, font=None, color="000000", wrap="none", name="見出し（2 枚目）")
     lanes = ["prep", "read", "build", "link"]
     hs = {"prep": 175, "read": 125, "build": 215, "link": 180}
@@ -106,7 +112,7 @@ def build_io(d, Y):
 
     # ---- prep: モックを取り込む ----
     y = ys["prep"]
-    lane_title(d, y, hs["prep"], "prep", "モックを取り込む")
+    lane_title(d, y, hs["prep"], "prep", "モックを取り込む\nsdd-relay-prep")
     svg = file(d, COLS[0], y + 62, [[("mock.svg", {"bold": True})], "人が案件に置くモック"], h=40, name="mock.svg")
     t = tool(d, COLS[1], y + 59, [[("道具 gsd-prep.mjs", {"bold": True})], "svg-digest → svg-rasterize"])
     read(d, (t, 1), (svg, 3))
@@ -125,7 +131,7 @@ def build_io(d, Y):
 
     # ---- read: モックを読む ----
     y = ys["read"]
-    lane_title(d, y, hs["read"], "read", "モックを読む")
+    lane_title(d, y, hs["read"], "read", "モックを読む\nsdd-relay-read")
     dig = file(d, COLS[0], y + 40, [[("mock.digest.json", {"bold": True})], "構造・文言・部品の節"], name="digest（read）")
     ext = agent(d, COLS[1] + 20, y + 34, [[("dna-extractor", {"bold": True})], "読む（別の回でもう一度確かめる）"],
                 name="dna-extractor（read）")
@@ -140,7 +146,7 @@ def build_io(d, Y):
 
     # ---- build: 画面を作り、お手本と比べる ----
     y = ys["build"]
-    lane_title(d, y, hs["build"], "build", "画面を作り\nお手本と比べる")
+    lane_title(d, y, hs["build"], "build", "画面を作り\nお手本と比べる\nsdd-relay-build")
     ins = [file(d, COLS[0], y + 18, [[("design-dna.md", {"bold": True})], "見た目の決め事"], name="dna（build）"),
            file(d, COLS[0], y + 58, [[("mock.digest.json", {"bold": True})], "値の辞書"], name="digest（build）")]
     imp = agent(d, COLS[1], y + 52, [[("implementer", {"bold": True})], "画面のコードを書く"], name="implementer")
@@ -178,7 +184,7 @@ def build_io(d, Y):
 
     # ---- link: 画面どうしを仮につなぐ ----
     y = ys["link"]
-    lane_title(d, y, hs["link"], "link", "画面どうしを\n仮につなぐ")
+    lane_title(d, y, hs["link"], "link", "画面どうしを\n仮につなぐ\nsdd-relay-link")
     lin = file(d, COLS[0], y + 40, [[("design-dna.md", {"bold": True})], "＋ 状態モックの digest"], h=40, name="dna（link）")
     ext2 = agent(d, COLS[1], y + 37, [[("dna-extractor", {"bold": True})], "つなぎ表を下書きする"], name="dna-extractor（link）")
     read(d, (ext2, 1), (lin, 3))

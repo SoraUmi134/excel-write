@@ -67,7 +67,8 @@ LEGEND = [(CMD, AW, None, "人のコマンドで、メインエージェント�
           (ARROW, AW, None, "サブエージェントを起こす（呼び出す）"),
           (WRITE, AW, None, "書く（矢印の先の物を作る）"),
           (GRAY, 1.25, "dash", "読んで従う（矢印の先の物を読む）"),
-          (NEXT, AW, None, "次の区切りへ（(2) から繰り返す）")]
+          (NEXT, AW, None, "次の区切りへ（(2) から繰り返す）"),
+          ("1F3864", 1.25, "sysDot", "図1 と図2 の対応（点線の枠の中を図2 で詳しく）")]
 
 
 def legend(d, x, y):
@@ -183,6 +184,9 @@ def build():
         lines = [[("方法論独自サブエージェント", {"bold": True})], [(f"sdd-relay-{st}", {"color": PURPLE})], "（計画書 1 枚に 1 体）"]
         r = (stack if st == "build" else box)(d, RX, y, RW, 58, lines, fill=BLUE, line=BLUE_LINE, name=f"中継ぎ係（{st}）")
         read(d, (r, 1), (cards[k], 3))
+        d.shape(r.x, r.y - 17, 70, 15, "roundRect", fill="1F3864", line=None, adj=30000,
+                text=[[(f"図2 {st}", {"bold": True})]], size=9, color="FFFFFF", font=YU, ins=(2, 0, 2, 0),
+                name=f"対応の札（{st}）")
         out = box(d, FX, y + 4, FW, 50, OUTS[st], fill=BLUE, line=BLUE_LINE, name=f"書く物（{st}）")
         if KIDS[st]:
             kid = box(d, KX, y + 2, KW, 54, KIDS[st], fill=BLUE, line=BLUE_LINE, name=f"子の係（{st}）")
@@ -219,8 +223,14 @@ def build():
               name="直しの計画書")
     write(d, (uat, 2), (fix, 0))
 
+    # 図2 で詳しく描く所（execute の中の、工程ごとの方法論の係）を点線の枠で囲む
+    fx0, fy0, fx1, fy1 = RX - 8, AY - 48, FX + FW + 10, AY + 82 * 3 + 66
+    d.shape(fx0, fy0, fx1 - fx0, fy1 - fy0, "rect", fill=None, line="1F3864", lw=1.25, dash="sysDot",
+            name="図2 の枠")
+    d.text(fx1 - 250, fy1 + 2, 250, 18, "↓ この枠の中を、図2 で工程ごとに詳しく", size=10, font=UD, color="1F3864",
+           wrap="none", align="r", name="図2 の枠の説明")
     legend(d, 60, MY + 60)
-    return d, dict(row4=AY + 82 * 4 + 10, screens=screens, relays=relays, kids=kids, frame_bottom=Y0 + 62 + FRAME_H)
+    return d, dict(row4=AY + 82 * 4 + 10, map_from=(fx1, fy1), screens=screens, relays=relays, kids=kids, frame_bottom=Y0 + 62 + FRAME_H)
 
 
 def callouts(d, p):
@@ -271,7 +281,15 @@ if __name__ == "__main__":
     callouts(d, parts)
     from build_m2f_io import build_io
     d2 = Drawing(tag="m2f-io", name="m2fの入出力")
-    build_io(d2, parts["frame_bottom"] + 170)
+    y2 = parts["frame_bottom"] + 170
+    build_io(d2, y2)
+    # 図1 の点線の枠 → 図2 の枠の上（対応の線。枠の右を通す）
+    mx, my = parts["map_from"]
+    lane_x = 1835
+    with d.group("図1 と図2 の対応"):
+        d.connector((mx, my - 30), (lane_x, my - 30), color="1F3864", lw=1.25, dash="sysDot", tail=False, name="対応")
+        d.connector((lane_x, my - 30), (lane_x, y2 + 100), color="1F3864", lw=1.25, dash="sysDot", tail=False, name="対応")
+        d.connector((lane_x, y2 + 100), (1826, y2 + 100), color="1F3864", lw=1.25, dash="sysDot", name="対応")
     write_into(base, out, [d, d2], grid=grid)
     os.remove(base)
     print("書いた", out)

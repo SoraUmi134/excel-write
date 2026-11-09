@@ -36,7 +36,7 @@ LONG_PARA_CALLOUT = 95
 # 線の意味の名前（台本の部品が付ける名前）と、その意味の線が同じ見た目であるべき組
 LINE_KINDS = {"コマンド": "cmd", "起こす矢印": "spawn", "起こす矢印の幹": "spawn", "起こす矢印の枝": "spawn",
               "書く": "write", "読む": "read", "できない線": "cannot", "区切り線": "separator",
-              "次へ": "next", "返す": "back"}   # 返す: 指摘などを前の係へ戻す   # 次へ: 繰り返しの戻り（例: 次の区切りへ）
+              "次へ": "next", "返す": "back", "対応": "map"}   # 対応: 図と図の同じ所を結ぶ   # 返す: 指摘などを前の係へ戻す   # 次へ: 繰り返しの戻り（例: 次の区切りへ）
 HERE = os.path.dirname(os.path.abspath(__file__))
 BANNED = os.path.join(HERE, "..", "..", "review-before-delivery", "banned_words.txt")
 DOC_WORDS = ("計画書", "PLAN.md", "SKILL.md", "手引き", "capability.json")
