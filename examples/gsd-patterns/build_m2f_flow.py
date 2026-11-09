@@ -26,7 +26,7 @@ PURPLE = ("accent5",)
 UD = "BIZ UDGothic"
 YU = "Yu Gothic"
 Y0 = 0
-FRAME_W = 1920
+FRAME_W = 2042
 FRAME_H = 680
 
 
@@ -138,7 +138,7 @@ def build():
     # ---- コマンドの並び（人が打つ）----
     CY = Y0 + 100
     # コマンドの帯の幅は、その下の範囲（境目の縦の点線の間）にそろえる
-    BOUNDS = [330, 461, 738, 1098, 1740, FRAME_W + 26]
+    BOUNDS = [330, 461, 860, 1220, 1862, FRAME_W + 26]
     names = [("/gsd-new-project", "案件を始める"), ("/gsd-discuss-phase N", "画面の表を決める"),
              ("/gsd-plan-phase N", "計画書を書く"), ("/gsd-execute-phase N", "画面を作る"),
              ("/gsd-verify-work N", "受け入れ確認")]
@@ -151,7 +151,7 @@ def build():
     d.connector((56, Y0 + 164), (FRAME_W + 20, Y0 + 164), color=ARROW, lw=AW, tail=False, name="区切り線")
     d.text(60, Y0 + 164, 80, 24, "裏側の処理", size=12, font=None, color="000000", wrap="none")
     MY = Y0 + 205
-    d.shape(330, MY, 1610, 41, "roundRect", fill=GREEN, line=GREEN_LINE, adj=8000,
+    d.shape(330, MY, 1732, 41, "roundRect", fill=GREEN, line=GREEN_LINE, adj=8000,
             text="メインエージェント", size=14, font=UD, name="メインエージェント")
     MB = MY + 41
     xs = [c.site(2)[0] for c in cmds]
@@ -180,20 +180,20 @@ def build():
     # メインが 2 つの決まりを読んで、2 つの書類を書く
     rule_g = rule_doc(d, 470, AY - 6, 104, 56, [[("GSD の手順書", {"bold": True})], "discuss-phase の手順"],
                       GREEN, name="GSD の手順書")
-    rule_k = rule_doc(d, 604, AY - 6, 118, 56, [[("キットの CLAUDE.md", {"bold": True})],
+    rule_k = rule_doc(d, 664, AY - 6, 112, 56, [[("キットの CLAUDE.md", {"bold": True})],
                                                 [("画面の表は SCREENS.md へ", {"color": "7030A0", "size": 8})]],
                       BLUE, name="キットの CLAUDE.md")
-    context = box(d, 472, AY + 100, 122, 58, [[("区切りの決め事", {"bold": True})], "CONTEXT.md",
+    context = box(d, 540, AY + 100, 124, 58, [[("区切りの決め事", {"bold": True})], "CONTEXT.md",
                                              [("表は SCREENS.md を指す", {"size": 8})]], name="CONTEXT")
-    screens = box(d, 606, AY + 100, 124, 58, [[("区切りの画面の表", {"bold": True})], "SCREENS.md"],
+    screens = box(d, 732, AY + 100, 124, 58, [[("区切りの画面の表", {"bold": True})], "SCREENS.md"],
                   fill=BLUE, line=BLUE_LINE, name="SCREENS")
     # メインは決まりを読み（灰の点線）、書類を書く（緑。決まりの箱は通さない）
-    for rule, doc, wx in ((rule_g, context, 586), (rule_k, screens, 727)):   # 左で読み、右で書く
+    for rule, doc in ((rule_g, context), (rule_k, screens)):   # 左で読み、右で書く（書く矢印は箱の上の真ん中へ）
         read(d, (rule.cx, MB), (rule, 0))
-        write(d, (wx, MB), (wx, doc.y))
+        write(d, (doc.cx, MB), (doc, 0))
 
     # (3) plan → gsd-planner（計画の手引きを読む）→ 計画書。計画書の形は門①が検査する
-    PX = 815   # plan の範囲の左寄り（右は計画書のカード）
+    PX = 937   # plan の範囲の左寄り（右は計画書のカード）
     planner = box(d, PX - 58, AY, 116, 58, [[("サブエージェント", {"bold": True})], "gsd-planner"], name="gsd-planner")
     spawn(d, (PX, MB), (planner, 0))
     skill = rule_doc(d, PX - 70, AY + 98, 140, 76,
@@ -201,13 +201,13 @@ def build():
                       [("config.json の agent_skills", {"color": "7030A0", "size": 8})],
                       [("で、GSD が持たせる", {"color": "7030A0", "size": 8})]], BLUE, name="sdd-planner")
     read(d, (planner, 2), (skill, 0))
-    gate1 = gate(d, 744, AY + 204, 156, 54,
+    gate1 = gate(d, 866, AY + 204, 156, 54,
                  [[("書いた計画の形を確かめる", {"bold": True, "size": 9})], "門①  gsd-plan-check"], name="門①")
     read(d, (planner, 1), (screens, 3))
-    d.text(744, AY + 260, 160, 28, ["Capability sdd-kit が", "plan:post に差し込む"], size=9, font=UD, color="7030A0", wrap="none",
+    d.text(866, AY + 260, 160, 28, ["Capability sdd-kit が", "plan:post に差し込む"], size=9, font=UD, color="7030A0", wrap="none",
            name="門①の説明")
 
-    CX, CW = 920, 160
+    CX, CW = 1042, 160
     d.text(CX, AY - 40, 170, 30, "計画書は工程ごとに書く", size=10, font=UD, color="000000", name="計画書の説明")
     cards = []
     for k, (st, rule) in enumerate(STAGES):
@@ -218,7 +218,7 @@ def build():
         else:
             cards.append(box(d, CX, AY + 82 * k - 4, CW, 68, lines, name=f"計画書（{st}）"))
     with d.group("順番の決まり方"):
-        d.shape(748, AY + 322, 340, 118, "roundRect", fill="FFFFFF", line="C55A11", lw=1.25, adj=6000, align="l",
+        d.shape(870, AY + 322, 340, 118, "roundRect", fill="FFFFFF", line="C55A11", lw=1.25, adj=6000, align="l",
                 anchor="t", text=[[("順番はこう決まる", {"bold": True, "color": "C55A11", "size": 11}),
                                    ("　組（wave）＝いっしょに流す計画書のまとまり", {"color": "C55A11"})],
                                   "① gsd-planner が計画書の頭に、組と先に済む物（depends_on）を書く",
@@ -231,9 +231,9 @@ def build():
         write(d, (planner, 3), (c, 1))
 
     # (4) execute → 中継ぎ係（agent_hint の名で起きる）→ 子の係 → 書く物
-    RX, RW = 1130, 170
-    KX, KW = 1328, 182
-    FX, FW = 1554, 174
+    RX, RW = 1252, 170
+    KX, KW = 1450, 182
+    FX, FW = 1676, 174
     relays, kids = [], {}
     for k, (st, _) in enumerate(STAGES):
         y = AY + 82 * k
@@ -311,12 +311,12 @@ def callouts(d, p):
                   to=(p["screens"].x + 8, p["screens"].y + p["screens"].h), name="吹き出し")
     with d.group("要点2"):
         r = p["relays"][3]
-        d.callout(1090, FB + 30, 250, 120,
+        d.callout(1212, FB + 30, 250, 120,
                   ["要点2", "", "GSD は計画書の agent_hint を見て、既定の gsd-executor の代わりに、方法論独自のサブエージェントを起こす。"],
                   to=(p["exe"].cx, p["exe"].y + p["exe"].h), name="吹き出し")
     with d.group("要点3"):
         k = p["kids"]["build"]
-        d.callout(1345, p["frame_bottom"] + 30, 370, 120,
+        d.callout(1467, p["frame_bottom"] + 30, 370, 120,
                   ["要点3", "", "実装の係はモックの画像を開かない（見張りが止める）。モックは mock.digest.json の値で読み、visual-verifier が撮った画面とモックを比べて、合うまで直す。"],
                   to=(k.x + k.w - 4, k.y + k.h), name="吹き出し")
 
@@ -355,7 +355,7 @@ if __name__ == "__main__":
     build_io(d2, y2)
     # 図1 の点線の枠 → 図2 の枠の上（対応の線。枠の右を通す）
     mx, my = parts["map_from"]
-    lane_x = 1975
+    lane_x = 2097
     with d.group("図1 と図2 の対応"):
         d.connector((mx, my - 30), (lane_x, my - 30), color="1F3864", lw=1.25, dash="sysDot", tail=False, name="対応")
         d.connector((lane_x, my - 30), (lane_x, y2 + 100), color="1F3864", lw=1.25, dash="sysDot", tail=False, name="対応")
