@@ -202,7 +202,7 @@ def build():
                       [("で、GSD が持たせる", {"color": "7030A0", "size": 8})]], BLUE, name="sdd-planner")
     read(d, (planner, 2), (skill, 0))
     gate1 = gate(d, 884, AY + 204, 160, 54,
-                 [[("書いた計画の形を確かめる", {"bold": True, "size": 9})], "門①  gsd-plan-check"], name="門①")
+                 [[("書いた計画を全部確かめる", {"bold": True, "size": 9})], "門①  gsd-plan-check"], name="門①")
     read(d, (planner, 1), (screens, 3))
     d.text(884, AY + 260, 160, 28, ["Capability sdd-kit が", "plan:post に差し込む"], size=9, font=UD, color="7030A0", wrap="none",
            name="門①の説明")
@@ -227,6 +227,9 @@ def build():
                                   "③ 組が済むたびに門②が確かめ、キットの案内で流せる計画書を",
                                   "　取り直して、次の組へ"],
                 size=10, font=UD, ins=(6, 4, 4, 2), name="順番の決まり方")
+    # 門①は区切りの計画書を全部確かめる（点線の枠でひとまとめにし、矢印は枠に刺す）
+    plans_box = d.shape(CX - 10, AY - 14, CW + 30, 82 * 3 + 88, "rect", fill=None, line=("tx1", 35, 65), lw=1,
+                        dash="sysDash", name="計画書のまとまり")
     for c in cards:
         write(d, (planner, 3), (c, 1))
 
@@ -237,7 +240,8 @@ def build():
     relays, kids = [], {}
     for k, (st, _) in enumerate(STAGES):
         y = AY + 82 * k
-        lines = [[("方法論独自サブエージェント", {"bold": True})], [(f"sdd-relay-{st}", {"color": PURPLE})], "（計画書 1 枚に 1 体）"]
+        role = "（道具を流すだけ）" if st == "prep" else "（検査とコミット。作業は子へ）"
+        lines = [[("方法論独自サブエージェント", {"bold": True})], [(f"sdd-relay-{st}", {"color": PURPLE})], role]
         r = (stack if st == "build" else box)(d, RX, y, RW, 58, lines, fill=BLUE, line=BLUE_LINE, name=f"中継ぎ係（{st}）")
         read(d, (r, 1), (cards[k], 3))
         d.shape(r.x, r.y - 17, 112, 15, "roundRect", fill="1F3864", line=None, adj=30000,
@@ -254,16 +258,17 @@ def build():
             mock = box(d, KX, AY - 40, KW, 30, [[("人が置いたモック", {"bold": True}), ("  mock.svg", {})]],
                        fill=BLUE, line=BLUE_LINE, name="モック")
             read(d, (r, 0), (mock, 1))
-            d.text(KX, y + 36, 175, 18, "（子は起こさず、自分で取り込む）", size=9, font=UD, color="595959",
-                   wrap="none", name="子なし")
+            d.text(KX - 12, y + 33, 210, 30, ["子は起こさない：SVG を値と画像に変える",
+                                              "決まった変換で、判断が要らないため"], size=9, font=UD, color="595959",
+                   name="子なし")
         relays.append(r)
     verifier = box(d, KX, AY + 82 * 4 + 10, KW, 58, [[("サブエージェント", {"bold": True})], "gsd-verifier",
                                                       "（区切りの目標を満たしたか）"], name="gsd-verifier")
     d.shape(KX, verifier.y - 17, 112, 15, "roundRect", fill="1F3864", line=None, adj=30000,
             text=[[("全部の組の後", {"bold": True})]], size=9, color="FFFFFF", font=YU, ins=(2, 0, 2, 0), name="対応の札（照合）")
-    gate2 = gate(d, FX, AY + 82 * 4 + 16, FW + 10, 54, [[("係の結果を確かめる", {"bold": True})], "門②  gsd-wave-check"],
+    gate2 = gate(d, FX, AY + 82 * 4 + 16, FW + 10, 54, [[("済んだ組の結果を確かめる", {"bold": True})], "門②  gsd-wave-check"],
                  name="門②")
-    read(d, (gate1, 3), (cards[2], 1))
+    read(d, (gate1, 3), (plans_box, 1))
     d.text(FX, AY + 82 * 4 + 72, 190, 28, ["Capability sdd-kit が", "execute:wave:post に差し込む"], size=9, font=UD, color="7030A0", wrap="none",
            name="門②の説明")
     lane = RX - 22
