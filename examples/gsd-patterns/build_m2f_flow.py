@@ -95,6 +95,8 @@ def legend(d, x, y):
         d.text(x + 40, yy, 220, 18, "GSD が持つ物（係・書類）", size=10, font=UD, color="000000", wrap="none")
         box(d, x, yy + 24, 34, 18, "", fill=BLUE, line=BLUE_LINE, name="凡例の色（方法論）")
         d.text(x + 40, yy + 24, 220, 18, "方法論（キット）が持つ物", size=10, font=UD, color="000000", wrap="none")
+        d.text(x, yy + 72, 280, 18, [[("紫の字", {"bold": True, "color": "7030A0"}), ("＝キットが GSD の流れを曲げる仕掛け", {})]],
+               size=10, font=UD, color="000000", wrap="none", name="凡例（仕掛け）")
         d.shape(x, yy + 48, 34, 18, "flowChartPredefinedProcess", fill=BLUE, line=GATE_TAG, lw=1.25, name="凡例の形（自動の検査）")
         d.text(x + 40, yy + 48, 240, 18, "自動で動く検査（GSD の差し込み口から呼ばれる）", size=10, font=UD, color="000000",
                wrap="none")
@@ -163,20 +165,28 @@ def build():
     write(d, (road, 2), (roadmap, 0))
 
     # (2) discuss → 区切りの画面の表
-    screens = box(d, xs[1] - 62, AY + 100, 124, 58, [[("区切りの画面の表", {"bold": True})], "SCREENS.md"],
+    context = box(d, 478, AY, 98, 58, [[("区切りの決め事", {"bold": True})], "CONTEXT.md",
+                                       [("表は SCREENS.md へ", {"size": 8})]], name="CONTEXT")
+    write(d, (context.cx, MB), (context, 0))
+    screens = box(d, xs[1] - 62, AY + 100, 124, 66, [[("区切りの画面の表", {"bold": True})], "SCREENS.md",
+                                                     [("キットの CLAUDE.md の", {"color": "7030A0", "size": 8})],
+                                                     [("決まりで、メインが書く", {"color": "7030A0", "size": 8})]],
                   fill=BLUE, line=BLUE_LINE, name="SCREENS")
-    write(d, (xs[1], MB), (screens, 0))
+    d.connector((466, MB), (466, screens.cy), color=WRITE, lw=AW, tail=False, name="書く")
+    d.connector((466, screens.cy), (screens, 1), color=WRITE, lw=AW, name="書く")
 
     # (3) plan → gsd-planner（計画の手引きを読む）→ 計画書。計画書の形は門①が検査する
     planner = box(d, xs[2] - 58, AY, 116, 58, [[("サブエージェント", {"bold": True})], "gsd-planner"], name="gsd-planner")
     spawn(d, (xs[2], MB), (planner, 0))
-    skill = box(d, xs[2] - 68, AY + 100, 136, 58,
-                [[("計画の手引き", {"bold": True})], "sdd-planner（SKILL.md）"], fill=BLUE, line=BLUE_LINE, name="sdd-planner")
+    skill = box(d, xs[2] - 68, AY + 100, 136, 70,
+                [[("計画の手引き", {"bold": True})], "sdd-planner（SKILL.md）",
+                 [("config.json の agent_skills", {"color": "7030A0", "size": 8})],
+                 [("で、GSD が持たせる", {"color": "7030A0", "size": 8})]], fill=BLUE, line=BLUE_LINE, name="sdd-planner")
     read(d, (planner, 2), (skill, 0))
-    gate1 = gate(d, xs[2] - 110, AY + 200, 190, 58,
+    gate1 = gate(d, xs[2] - 110, AY + 204, 190, 54,
                  [[("書いた計画の形を確かめる", {"bold": True})], "門①  gsd-plan-check"], name="門①")
     read(d, (planner, 1), (screens, 3))
-    d.text(xs[2] - 110, AY + 260, 190, 16, "計画を書き終えると自動で流れる", size=9, font=UD, color="595959", wrap="none",
+    d.text(xs[2] - 110, AY + 260, 200, 16, "Capability sdd-kit が plan:post に差し込む", size=9, font=UD, color="7030A0", wrap="none",
            name="門①の説明")
 
     CX, CW = 800, 160
@@ -197,7 +207,8 @@ def build():
                                   "　先に済む物（depends_on）を書く",
                                   "② execute は組の小さい順に計画書を流し、",
                                   "　agent_hint の係を起こす（同じ組は同時に）",
-                                  "③ 組が済むたびに門②が確かめて、次の組へ"],
+                                  "③ 組が済むたびに門②が確かめ、キットの案内",
+                                  "　で、流せる計画書を取り直して次の組へ"],
                 size=10, font=UD, ins=(6, 4, 4, 2), name="順番の決まり方")
     for c in cards:
         write(d, (planner, 3), (c, 1))
@@ -237,13 +248,18 @@ def build():
                  name="門②")
     read(d, (gate2, 0), (cards[3], 2))
     read(d, (gate1, 3), (cards[2], 1))
-    d.text(CX - 20, AY + 82 * 4 + 72, 200, 16, "組が済むたびに自動で流れる", size=9, font=UD, color="595959", wrap="none",
+    d.text(CX - 20, AY + 82 * 4 + 72, 190, 28, ["Capability sdd-kit が", "execute:wave:post に差し込む"], size=9, font=UD, color="7030A0", wrap="none",
            name="門②の説明")
     lane = RX - 22
+    exe = box(d, RX, AY + 82 * 4 + 64, RW, 28, [[("gsd-executor（GSD の既定）", {"bold": True})]], name="使わない gsd-executor")
     with d.group("起こす矢印"):
-        d.connector((lane, MB), (lane, verifier.cy), color=ARROW, lw=AW, tail=False, name="起こす矢印の幹")
-        for t in relays + [verifier]:
+        d.connector((lane, MB), (lane, exe.cy), color=ARROW, lw=AW, tail=False, name="起こす矢印の幹")
+        for t in relays + [verifier, exe]:
             spawn(d, (lane, t.cy), (t, 1), name="起こす矢印の枝")
+    d.cross(lane + 11, exe.cy, size=20)
+    d.text(RX, AY + 82 * 4 - 14, 196, 30, [[("config.json の agent_hint_routing: true", {"color": "7030A0"})],
+                                          [("で、agent_hint の係が代わりに起きる", {"color": "7030A0"})]],
+           size=8, font=UD, color="7030A0", name="gsd-executor の説明")
 
     # (5) verify-work → 人が動く画面を確かめる → 足りなければ直しの計画書
     uat = box(d, xs[4] - 80, AY, 160, 58, [[("受け入れ確認", {"bold": True})], "人が動く画面を見て答える"],
@@ -262,7 +278,7 @@ def build():
     d.text(fx1 - 250, fy1 + 2, 250, 18, "↓ この枠の中を、図2 で工程ごとに詳しく", size=10, font=UD, color="1F3864",
            wrap="none", align="r", name="図2 の枠の説明")
     legend(d, 60, MY + 60)
-    return d, dict(row4=AY + 82 * 4 + 10, map_from=(fx1, fy1), screens=screens, relays=relays, kids=kids, frame_bottom=Y0 + 62 + FRAME_H)
+    return d, dict(exe=exe, row4=AY + 82 * 4 + 10, map_from=(fx1, fy1), screens=screens, relays=relays, kids=kids, frame_bottom=Y0 + 62 + FRAME_H)
 
 
 def callouts(d, p):
@@ -275,7 +291,7 @@ def callouts(d, p):
         r = p["relays"][3]
         d.callout(925, FB + 30, 295, 110,
                   ["要点2", "", "GSD は計画書の agent_hint を見て、既定の gsd-executor の代わりに、方法論独自のサブエージェントを起こす。"],
-                  to=(r.cx, r.y + r.h), name="吹き出し")
+                  to=(p["exe"].cx, p["exe"].y + p["exe"].h), name="吹き出し")
     with d.group("要点3"):
         k = p["kids"]["build"]
         d.callout(1240, p["frame_bottom"] + 30, 400, 110,
