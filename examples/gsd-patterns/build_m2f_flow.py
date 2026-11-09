@@ -128,11 +128,13 @@ def build():
 
     # ---- コマンドの並び（人が打つ）----
     CY = Y0 + 100
-    spec = [(330, 130, "/gsd-new-project", "案件を始める"),
-            (470, 262, "/gsd-discuss-phase N", "画面の表を決める"),
-            (742, 150, "/gsd-plan-phase N", "計画書を書く"),
-            (902, 800, "/gsd-execute-phase N", "画面を作る"),
-            (1732, 200, "/gsd-verify-work N", "受け入れ確認")]
+    # コマンドの帯の幅は、その下の範囲（境目の縦の点線の間）にそろえる
+    BOUNDS = [330, 461, 738, 1098, 1740, FRAME_W + 26]
+    names = [("/gsd-new-project", "案件を始める"), ("/gsd-discuss-phase N", "画面の表を決める"),
+             ("/gsd-plan-phase N", "計画書を書く"), ("/gsd-execute-phase N", "画面を作る"),
+             ("/gsd-verify-work N", "受け入れ確認")]
+    spec = [(BOUNDS[i] + (0 if i == 0 else 6), BOUNDS[i + 1] - BOUNDS[i] - (6 if i == 0 else 12)) + names[i]
+            for i in range(5)]
     cmds = [d.shape(x, CY, w, 60, "homePlate", fill=GREEN, line=GREEN_LINE, lw=0.75, adj=18000,
                     text=[[(a, {"bold": True})], b], size=11, font=YU, align="ctr", ins=(2, 0, 9, 0),
                     color="000000", name=a) for x, w, a, b in spec]
@@ -153,7 +155,7 @@ def build():
         d.connector((vx, CY), (vx, CY - 14), color=NEXT, lw=AW, tail=False, name="次へ")
         d.connector((vx, CY - 14), (dxx, CY - 14), color=NEXT, lw=AW, tail=False, name="次へ")
         d.connector((dxx, CY - 14), (dxx, CY), color=NEXT, lw=AW, name="次へ")
-        d.text(1500, CY - 32, 150, 16, "次の区切りへ", size=9, font=UD, color="404040", wrap="none",
+        d.text(cmds[4].x - 120, CY - 32, 150, 16, "次の区切りへ", size=9, font=UD, color="404040", wrap="none",
                align="ctr", name="次の区切りへの説明")
 
     AY = MY + 90
@@ -180,9 +182,10 @@ def build():
         write(d, (rule, 2), (doc, 0))
 
     # (3) plan → gsd-planner（計画の手引きを読む）→ 計画書。計画書の形は門①が検査する
-    planner = box(d, xs[2] - 58, AY, 116, 58, [[("サブエージェント", {"bold": True})], "gsd-planner"], name="gsd-planner")
-    spawn(d, (xs[2], MB), (planner, 0))
-    skill = box(d, xs[2] - 68, AY + 100, 136, 70,
+    PX = 815   # plan の範囲の左寄り（右は計画書のカード）
+    planner = box(d, PX - 58, AY, 116, 58, [[("サブエージェント", {"bold": True})], "gsd-planner"], name="gsd-planner")
+    spawn(d, (PX, MB), (planner, 0))
+    skill = box(d, PX - 68, AY + 100, 136, 70,
                 [[("計画の手引き", {"bold": True})], "sdd-planner（SKILL.md）",
                  [("config.json の agent_skills", {"color": "7030A0", "size": 8})],
                  [("で、GSD が持たせる", {"color": "7030A0", "size": 8})]], fill=BLUE, line=BLUE_LINE, name="sdd-planner")
@@ -281,8 +284,9 @@ def build():
            wrap="none", align="r", name="図2 の枠の説明")
     # コマンドごとの境目（縦の点線）
     with d.group("コマンドごとの境目"):
-        for bx in (461, 738, 1098, 1740):
-            d.connector((bx, MB + 6), (bx, Y0 + 62 + FRAME_H - 6), color=("tx1", 35, 65), lw=1, dash="sysDash",
+        for bx in BOUNDS[1:-1]:
+            d.connector((bx, Y0 + 68), (bx, MY - 2), color=("tx1", 35, 65), lw=1, dash="sysDash", tail=False, name="境目")
+            d.connector((bx, MB + 2), (bx, Y0 + 62 + FRAME_H - 6), color=("tx1", 35, 65), lw=1, dash="sysDash",
                         tail=False, name="境目")
     legend(d, 60, MY + 60)
     return d, dict(exe=exe, row4=AY + 82 * 4 + 10, map_from=(fx1, fy1), screens=screens, relays=relays, kids=kids, frame_bottom=Y0 + 62 + FRAME_H)
