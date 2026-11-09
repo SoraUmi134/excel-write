@@ -27,7 +27,7 @@ UD = "BIZ UDGothic"
 YU = "Yu Gothic"
 Y0 = 0
 FRAME_W = 2382
-FRAME_H = 680
+FRAME_H = 740
 
 
 def box(d, x, y, w, h, lines, fill=GREEN, line=GREEN_LINE, size=10, name="箱"):
@@ -115,7 +115,7 @@ def legend(d, x, y):
 KID_GROUPS = {
     "read": ("画面ごとに、読む → 監査（2〜3 画面ずつ同時に）",
              [("① dna-extractor", "読む（主担当）"), ("② dna-extractor", "監査（別の回で確かめる）")], "→"),
-    "build": ("実装と確かめを別の係に分ける（合うまで最大 5 周）",
+    "build": ("実装と確かめを別の係に分ける（最大 5 周。共通の build は ① だけ）",
               [("① implementer", "画面のコードを書く"), ("② visual-verifier", "撮ってお手本と比べる")], "⇄"),
     "link": ("表を書く → 画面ごとにつなぐ → 押して確かめる",
              [("① dna-extractor", "つなぎ表"), ("② implementer", "画面ごとにつなぐ"), ("③ visual-verifier", "押して確かめる")], "→"),
@@ -126,6 +126,9 @@ def kid_group(d, x, y, w, h, st):
     """方法論の係が順に起こす子の係のまとまり（点線の枠）。中に、起こす順の番号つきで子の係を並べる。"""
     label, kids, sep = KID_GROUPS[st]
     with d.group(f"子の係（{st}）"):
+        if st == "build":   # 方法論の係（画面ごと）ごとに 1 つずつある
+            for k in (2, 1):
+                d.shape(x + 4 * k, y + 3 * k, w, h, "rect", fill="F3F7FC", line=BLUE_LINE, lw=1, dash="sysDash", name="重なり")
         frame = d.shape(x, y, w, h, "rect", fill="F3F7FC", line=BLUE_LINE, lw=1, dash="sysDash", name=f"子の係の枠（{st}）")
         d.text(x + 4, y + 1, w - 8, 14, label, size=8, font=UD, color="404040", wrap="none", name="子の係の枠の説明")
         n = len(kids)
@@ -295,11 +298,20 @@ def build():
                                                       "（区切りの目標を満たしたか）"], name="gsd-verifier")
     d.shape(KX, verifier.y - 17, 112, 15, "roundRect", fill="1F3864", line=None, adj=30000,
             text=[[("全部の組の後", {"bold": True})]], size=9, color="FFFFFF", font=YU, ins=(2, 0, 2, 0), name="対応の札（照合）")
-    gate2 = gate(d, FX, AY + 82 * 4 + 16, FW + 10, 54, [[("済んだ組の結果を確かめる", {"bold": True})], "門②  gsd-wave-check"],
+    # 門②が見るのは、各方法論の係が計画書ごとに残す記録
+    records = box(d, FX, AY + 82 * 4 + 6, FW, 46, [[("計画書ごとの記録", {"bold": True})],
+                                                   [("SUMMARY.md・RESULT.json", {"size": 8})],
+                                                   [("CHECKS.json・deferred-items.md", {"size": 8})]],
+                  fill=BLUE, line=BLUE_LINE, name="計画書ごとの記録")
+    write(d, (FX + FW / 2, AY + 82 * 3 + 66), (records, 0))
+    d.text(FX + FW / 2 + 4, AY + 82 * 3 + 68, 120, 14, "各方法論の係が書く", size=8, font=UD, color="404040", wrap="none",
+           name="記録の説明")
+    gate2 = gate(d, FX, AY + 82 * 4 + 76, FW + 10, 50, [[("済んだ組の結果を確かめる", {"bold": True})], "門②  gsd-wave-check"],
                  name="門②")
     read(d, (gate1, 3), (plans_box, 1))
-    d.text(FX, AY + 82 * 4 + 72, 190, 28, ["Capability sdd-kit が", "execute:wave:post に差し込む"], size=9, font=UD, color="7030A0", wrap="none",
+    d.text(FX, AY + 82 * 4 + 128, 190, 28, ["Capability sdd-kit が", "execute:wave:post に差し込む"], size=9, font=UD, color="7030A0", wrap="none",
            name="門②の説明")
+    read(d, (gate2, 0), (records, 2))
     lane = RX - 22
     exe = box(d, RX, AY + 82 * 4 + 64, RW, 28, [[("gsd-executor（GSD の既定）", {"bold": True})]], name="使わない gsd-executor")
     with d.group("起こす矢印"):
