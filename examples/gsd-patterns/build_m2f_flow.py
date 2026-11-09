@@ -71,6 +71,18 @@ LEGEND = [(CMD, AW, None, "人のコマンドで、メインエージェント�
           ("1F3864", 1.25, "sysDot", "図1 と図2 の対応（点線の枠の中を図2 で詳しく）")]
 
 
+GATE_TAG = "2F5597"
+
+
+def gate(d, x, y, w, h, lines, name="自動の検査"):
+    """自動で動く検査（GSD の差し込み口から呼ばれるキットの道具）。両端に縦の帯がある箱と「自動の検査」の札で、係と見分ける。"""
+    with d.group(name):
+        d.shape(x, y - 15, 74, 14, "roundRect", fill=GATE_TAG, line=None, adj=30000,
+                text=[[("⚙ 自動の検査", {"bold": True})]], size=8, color="FFFFFF", font=YU, ins=(2, 0, 2, 0), name="札（自動の検査）")
+        return d.shape(x, y, w, h, "flowChartPredefinedProcess", fill=BLUE, line=GATE_TAG, lw=1.25,
+                       text=lines, size=10, font=YU, ins=(2, 2, 2, 2), name=name)
+
+
 def legend(d, x, y):
     with d.group("凡例"):
         d.text(x, y - 24, 200, 20, [[("凡例", {"bold": True})]], size=11, font=UD, color="000000", wrap="none")
@@ -83,6 +95,9 @@ def legend(d, x, y):
         d.text(x + 40, yy, 220, 18, "GSD が持つ物（係・書類）", size=10, font=UD, color="000000", wrap="none")
         box(d, x, yy + 24, 34, 18, "", fill=BLUE, line=BLUE_LINE, name="凡例の色（方法論）")
         d.text(x + 40, yy + 24, 220, 18, "方法論（キット）が持つ物", size=10, font=UD, color="000000", wrap="none")
+        d.shape(x, yy + 48, 34, 18, "flowChartPredefinedProcess", fill=BLUE, line=GATE_TAG, lw=1.25, name="凡例の形（自動の検査）")
+        d.text(x + 40, yy + 48, 240, 18, "自動で動く検査（GSD の差し込み口から呼ばれる）", size=10, font=UD, color="000000",
+               wrap="none")
 
 
 WAVE = {"prep": ("組1", "組 1 ／ 先に済む物: なし"), "read": ("組2", "組 2 ／ prep の後"),
@@ -158,10 +173,10 @@ def build():
     skill = box(d, xs[2] - 68, AY + 100, 136, 58,
                 [[("計画の手引き", {"bold": True})], "sdd-planner（SKILL.md）"], fill=BLUE, line=BLUE_LINE, name="sdd-planner")
     read(d, (planner, 2), (skill, 0))
-    gate1 = box(d, xs[2] - 68, AY + 200, 136, 58,
-                [[("書いた計画の形を確かめる", {"bold": True})], "門①  gsd-plan-check"], fill=BLUE, line=BLUE_LINE, name="門①")
+    gate1 = gate(d, xs[2] - 110, AY + 200, 190, 58,
+                 [[("書いた計画の形を確かめる", {"bold": True})], "門①  gsd-plan-check"], name="門①")
     read(d, (planner, 1), (screens, 3))
-    d.text(xs[2] - 68, AY + 260, 150, 16, "計画を書き終えると自動で流れる", size=9, font=UD, color="595959", wrap="none",
+    d.text(xs[2] - 110, AY + 260, 190, 16, "計画を書き終えると自動で流れる", size=9, font=UD, color="595959", wrap="none",
            name="門①の説明")
 
     CX, CW = 800, 160
@@ -175,7 +190,7 @@ def build():
         else:
             cards.append(box(d, CX, AY + 82 * k - 4, CW, 68, lines, name=f"計画書（{st}）"))
     with d.group("順番の決まり方"):
-        d.shape(520, AY + 282, 274, 140, "roundRect", fill="FFFFFF", line="C55A11", lw=1.25, adj=6000, align="l",
+        d.shape(496, AY + 282, 274, 140, "roundRect", fill="FFFFFF", line="C55A11", lw=1.25, adj=6000, align="l",
                 anchor="t", text=[[("順番はこう決まる", {"bold": True, "color": "C55A11", "size": 11})],
                                   [("組（wave）＝いっしょに流す計画書のまとまり", {"color": "C55A11"})],
                                   "① gsd-planner が計画書の頭に、組（wave）と",
@@ -218,11 +233,11 @@ def build():
                                                       "（区切りの目標を満たしたか）"], name="gsd-verifier")
     d.shape(KX, verifier.y - 17, 112, 15, "roundRect", fill="1F3864", line=None, adj=30000,
             text=[[("全部の組の後", {"bold": True})]], size=9, color="FFFFFF", font=YU, ins=(2, 0, 2, 0), name="対応の札（照合）")
-    gate2 = box(d, CX, AY + 82 * 4 + 10, CW, 58, [[("係の結果を確かめる", {"bold": True})], "門②  gsd-wave-check"],
-                fill=BLUE, line=BLUE_LINE, name="門②")
+    gate2 = gate(d, CX - 20, AY + 82 * 4 + 16, CW + 40, 54, [[("係の結果を確かめる", {"bold": True})], "門②  gsd-wave-check"],
+                 name="門②")
     read(d, (gate2, 0), (cards[3], 2))
     read(d, (gate1, 3), (cards[2], 1))
-    d.text(CX, AY + 82 * 4 + 70, 170, 16, "組が済むたびに自動で流れる", size=9, font=UD, color="595959", wrap="none",
+    d.text(CX - 20, AY + 82 * 4 + 72, 200, 16, "組が済むたびに自動で流れる", size=9, font=UD, color="595959", wrap="none",
            name="門②の説明")
     lane = RX - 22
     with d.group("起こす矢印"):
