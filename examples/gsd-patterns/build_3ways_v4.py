@@ -393,14 +393,16 @@ def config_read(d, main, cfg):
 
 # ---- 図 1 -----------------------------------------------------------------------
 def fig1(Y0):
+    """絶対の理想の形を、GSD の既定の係だけで組んだ図。書き込む注意は、GSD ではできない所（赤）だけ。
+    赤にする所は、GSD の原文（agents/gsd-executor.md・execute-phase の手順書・FEATURES.md）で確かめた物に限る。"""
     d = Drawing(tag="v4fig1", name="図1 理想の形")
-    FH = 880
-    T, main, MB, AY = skeleton(d, Y0, "図1　理想の形（gsd-executor を、役目を変えて何度も起こす）", False,
-                               "起きるのがいつも gsd-executor なので、役目ごとに読める物・書ける物を、見張りで止められないため", FH)
+    FH = 870
+    T, main, MB, AY = skeleton(d, Y0, "図1　理想の形（方法論のやりたい事を、GSD の既定のサブエージェントだけで組む）", False,
+                               "GSD の既定の係だけでは、点検・往復・役目ごとの見張り・画面を押す確かめが組めないため（赤い所）", FH)
     d.text(52, T + 6, 334, 70,
-           "ねらい: GSD の既定のサブエージェントだけで役目を分け、役目ごとの読み書きを見張り（Claude Code の hook）で止める。\n"
-           "方法論独自のサブエージェントを案件に足さないので、GSD の版上げに強い。",
-           size=9.5, font=UD, color="000000", name="ねらい")
+           "この図: 方法論が本当にやりたい事を、GSD の既定のサブエージェント（gsd-executor）だけで組んだ形。\n"
+           "赤い所が、GSD の仕組みのためにできない所。",
+           size=9.5, font=UD, color="000000", name="この図の説明")
     cfg = doc(d, 56, MB + 30, 320, 92,
               [".planning/config.json（GSD の設定）", '"agent_skills": {',
                [('    "gsd-planner":  [方法論の手引き]', {"color": PURPLE})],
@@ -415,88 +417,92 @@ def fig1(Y0):
               name="計画立案が読む手引き")
     line(d, "read", (p, 2), (man, 0))
 
-    # 作るの列: gsd-executor を 5 体、役目を変えて起こす
-    E1 = MB + 116
+    # 作るの列: 理想では、役目の違う 5 体が働く。GSD の既定の係だけなので、5 体とも gsd-executor
+    E1 = MB + 96
     GAP = 100
-    roles = ["モックの値を読み取る", "読み取った値を点検する", "画面のコードを書く", "撮ってモックと比べる", "見た目の回帰テストを書く"]
-    FT = E1 - 62
-    fr = frame(d, 1086, FT, 210, E1 + GAP * 4 + 54 + 14 - FT, name="係の枠")
-    d.text(1110, FT + 4, 184, 16, "どの役目でも、起きるのは gsd-executor", size=9.5, font=UD, color="000000",
+    roles = [["役目: モックの値を読み取る"], ["役目: 1 体目の読み取りを点検する"], ["役目: 画面のコードを書く"],
+             ["役目: 撮ってモックと比べ、", "画面を押して確かめる。", "ずれは 3 体目に返して直させる"],
+             ["役目: 見た目の回帰テストを書く"]]
+    hs = [78 if len(r) > 1 else 54 for r in roles]
+    eys = [E1]
+    for h in hs[:-1]:
+        eys.append(eys[-1] + h + 46)
+    FT = E1 - 50
+    fr = frame(d, 1086, FT, 222, eys[-1] + hs[-1] + 12 - FT, name="係の枠")
+    d.text(1110, FT + 4, 196, 16, "どの役目でも、起きるのは gsd-executor", size=9.5, font=UD, color="000000",
            wrap="none", name="枠の見出し")
     badge(d, 1098, FT + 12, 1)
-    badge(d, 1098, MB + 19, 2, gold=True)
-    note(d, 1112, MB + 6, 180, "メインが依頼文で、役目と手順を毎回言い渡して起こす", size=9, name="言い渡しの注", h=26)
     exes = []
     for k, role in enumerate(roles):
-        e = stack(d, 1098, E1 + GAP * k, 182, 54,
-                  [[("GSDのサブエージェント", {"bold": True})], f"gsd-executor（{k + 1} 体目）", f"役目: {role}"],
-                  name=f"gsd-executor（{k + 1} 体目）")
+        lines = [[("GSDのサブエージェント", {"bold": True})], f"gsd-executor（{k + 1} 体目）"] + role
+        if k in (1, 3):   # GSD では起こせない係は、灰の点線の箱（本当は要るが、この形ではできない物）
+            e = ghost(d, 1098, eys[k], 196, hs[k], lines, name=f"gsd-executor（{k + 1} 体目・起こせない）")
+        else:
+            e = stack(d, 1098, eys[k], 196, hs[k], lines, name=f"gsd-executor（{k + 1} 体目）")
         exes.append(e)
-    ys = [E1 + GAP * 0.5 - 2, E1 + GAP * 2.5 - 2, E1 + GAP * 4 - 2]
+    ys = [(exes[0].cy + exes[1].cy) / 2 - 29, (exes[2].cy + exes[3].cy) / 2 - 29, exes[4].cy - 29]
     cards = plan_cards(d, ys, lambda st: [[(f"計画書 PLAN.md（{st}）", {"bold": True})], "（agent_hint は無し）"], p)
     stage_note(d, ys[2] + 66)
     for k, e in enumerate(exes):
         line(d, "read", (e, 1), (cards[[0, 0, 1, 1, 2][k]], 3))
-    # 起こす: 幹から段ごとに枝を出して上へ入れる
+    # 起こす: 幹から段ごとに枝。2 体目（点検）と 4 体目（確かめて返す）は、GSD では起こせない（赤の点線と ✕）
     bys = [e.y - 12 for e in exes]
     line(d, "spawn", (LANE, MB), (LANE, bys[-1]), tail=False)
     for k, (e, by) in enumerate(zip(exes, bys)):
-        d.connector((LANE, by), (e.cx, by), color=LINES["spawn"][0], lw=AW, tail=False, name="起こす矢印の枝")
-        line(d, "spawn", (e.cx, by), (e, 0))
-        number(d, e.cx + 6, by - 24, f"({[8, 9, 10, 11, 13][k]})")
+        if k in (1, 3):
+            color, lw, dash, _, _ = LINES["cannot"]
+            d.connector((LANE, by), (e.cx, by), color=color, lw=lw, dash=dash, tail=False, name="できない線")
+            line(d, "cannot", (e.cx, by), (e, 0))
+            cross(d, LANE + 34, by, 16, RED)
+            badge(d, LANE + 58, by, 3 if k == 1 else 4)
+        else:
+            d.connector((LANE, by), (e.cx, by), color=LINES["spawn"][0], lw=AW, tail=False, name="起こす矢印の枝")
+            line(d, "spawn", (e.cx, by), (e, 0))
+        number(d, e.cx + 8, by - 24, f"({8 + k})")
     badge(d, exes[1].x + exes[1].w - 4, exes[1].y + 4, 6)
-    badge(d, exes[3].x + exes[3].w - 4, exes[3].y + 4, 7, gold=True)
-    # 往復: 4 体目の結果がメインへ戻り、メインが 3 体目を起こし直す
-    BX = 1312
-    line(d, "back", (exes[3], 3), (BX, exes[3].cy), tail=False)
-    line(d, "back", (BX, exes[3].cy), (BX, MB))
-    number(d, BX + 4, exes[3].cy - 2, "(12)")
-    loop = note(d, BX + 8, exes[2].y - 4, 222,
-                [[("4 体目が結果をメインへ返す。", {})],
-                 [("ずれがあれば、メインが 3 体目から起こし直す", {})],
-                 [("（(10)→(11)→(12) を繰り返す）", {})]],
-                size=9.5, name="往復の注")
-    badge(d, BX + 20, exes[2].y - 18, 3, gold=True)
-    badge(d, BX + 44, exes[2].y - 18, 4)
-    # 枠の下: 手引きを読む線と、本当は要る見張り
+    badge(d, exes[3].x + exes[3].w - 4, exes[3].y + 4, 7)
+    # 枠の下: 手引きを読む線と、理想では要る見張り
     FB = fr.y + fr.h
     man2 = doc(d, 1098, FB + 34, 150, 62,
                [[("方法論の手引き（SKILL.md）", {"bold": True})], [("agent_skills で gsd-executor に渡す", {"color": PURPLE})]],
                name="作るときに読む手引き")
     line(d, "read", (1173, FB), (man2, 0))
     g = ghost(d, 1300, FB + 34, 234, 46, ["見張り: 役目ごとに、", "読める物・書ける物を止める"], name="本当は要る見張り")
-    line(d, "cannot", (1270, FB), (g, 0))
-    cross(d, 1285 + (g.cx - 1285) * 0.45, FB + 15, 20, RED)
-    badge(d, 1360, FB + 14, 5)
-    legend(d, 56, MB + 140, ["cmd", "spawn", "write", "read", "back", "cannot", "boundary"],
-           ["colors", "stack", "doc", "frame", "ghost", "red", "gold", "callout", "purple"])
+    line(d, "cannot", (1280, FB), (g, 0))
+    cross(d, 1290 + (g.cx - 1290) * 0.45, FB + 15, 20, RED)
+    badge(d, 1366, FB + 14, 5)
+    legend(d, 56, MB + 140, ["cmd", "spawn", "write", "read", "cannot", "boundary"],
+           ["colors", "stack", "doc", "frame", "ghost", "red", "callout", "purple"])
 
+    def rng(e, a, b):
+        return (e.y + a, e.y + b)
     items = [
-        dict(nums=[2], gold=[True], head="問題点 2　役目と手順は、メインが毎回、依頼文で言い渡す",
-             body=[P("GSD の手順書に無い動きなので、メインが毎回守る保証が無い。"),
-                   P(("言い漏れると、gsd-executor は方法論の手順を知らずに作る。",))],
-             to=(1292, MB + 19), keys=["4139"]),
         dict(nums=[1], gold=[False], head="問題点 1　どの役目でも、起きるのは gsd-executor",
-             body=[P("役目の違いは、メインが依頼文に書く言葉だけ。"),
-                   P(("工程に要る道具と手順を持つサブエージェントに、任せられない。",))],
-             to=(fr.x + fr.w, FT + 12), yrange=(FT + 8, exes[0].y - 14), keys=["planmd"]),
-        dict(nums=[6], gold=[False], head="問題点 6　gsd-executor の決まりと、役目がぶつかる",
-             body=[P("gsd-executor の決まりは「作業ごとにコミットし、SUMMARY.md（作業の記録）を作り、食い違いは自分で直す」。"),
-                   P("「点検だけして直すな」と依頼しても、", ("どちらが勝つか分からず、点検役がコードを直してしまうことがある。",))],
-             to=(exes[1].x + exes[1].w, exes[1].cy), yrange=(exes[1].y + 10, exes[1].y + 50), keys=["executor_md"]),
-        dict(nums=[3, 4], gold=[True, False], head="問題点 3・4　作る→点検→直すの繰り返しは、メインが回すしかない",
-             body=[P("gsd-executor はサブエージェントを起こせないので、4 体目が結果を返すたびに、メインが 3 体目から起こし直す。"),
-                   P("よい所: 起こし直すと前の会話を持たない新しい gsd-executor になるので、作った本人が自分の物を点検することにはならない。"),
-                   P("ただし GSD の手順書は「計画書 1 本につき 1 体」。", ("この繰り返しをメインが毎回守る保証が無い。",))],
-             to=(BX + 8 + 222, exes[2].y + 20), yrange=(exes[2].y - 4, loop - 4), keys=["exec_routing", "4139"]),
-        dict(nums=[7], gold=[True], head="問題点 7　画面を押して確かめる道具が無い",
-             body=[P("gsd-executor には Playwright MCP（ブラウザを動かす道具）が無く、GSD に足す部品（Capability）でも足せない。"),
-                   P("撮って比べるのは撮影スクリプトでできるが、", ("押して画面の移り方を確かめる手順は、作り直しが要る。",))],
-             to=(exes[3].x + exes[3].w, exes[3].cy + 12), yrange=(exes[3].cy + 8, exes[3].y + 50), keys=["tools"]),
+             body=[P("GSD は、計画書に agent_hint が無いと、どの計画書でも gsd-executor を起こす。"),
+                   P(("役目ごとに道具と手順の違う係を、GSD の既定の係だけでは用意できない。",))],
+             to=(fr.x + fr.w, FT + 12), yrange=(FT + 6, exes[0].y - 16), keys=["exec_routing", "planmd"]),
+        dict(nums=[3], gold=[False], head="問題点 3　点検する役を、別に起こせない",
+             body=[P("GSD の手順書は、計画書 1 本につき gsd-executor を 1 体だけ起こす。"
+                     "gsd-executor にはサブエージェントを起こす道具（Agent ツール）が無い。"),
+                   P(("作った物を、別の係に点検させられない。",))],
+             to=(fr.x + fr.w, exes[1].y + 10), yrange=rng(exes[1], 4, 26), keys=["exec_routing", "tools"]),
+        dict(nums=[6], gold=[False], head="問題点 6　gsd-executor の決まりと、点検の役目がぶつかる",
+             body=[P("gsd-executor の決まりは「作業ごとにコミットし、SUMMARY.md（作業の記録）を作り、見つけた不具合は自分で直す」。"),
+                   P(("点検だけして直さない役にできない。",))],
+             to=(fr.x + fr.w, exes[1].y + 40), yrange=rng(exes[1], 30, 52), keys=["executor_md"]),
+        dict(nums=[4], gold=[False], head="問題点 4　作る⇄確かめるを、往復させられない",
+             body=[P("確かめる役を起こす手順も、ずれを作る役へ返して直させる手順も、GSD の手順書に無い。"),
+                   P(("見た目のずれを、別の係が確かめて直させる繰り返しが組めない。",))],
+             to=(fr.x + fr.w, exes[3].y + 12), yrange=rng(exes[3], 4, 30), keys=["exec_routing"]),
+        dict(nums=[7], gold=[False], head="問題点 7　画面を押して確かめる道具を、持たせられない",
+             body=[P("gsd-executor には Playwright MCP（ブラウザを動かす道具）が無い。"
+                     "GSD に足す部品（Capability）でも、起こすときの指定でも足せない。"),
+                   P(("画面を押して確かめる役にできない。",))],
+             to=(fr.x + fr.w, exes[3].y + 52), yrange=rng(exes[3], 40, 74), keys=["tools"]),
         dict(nums=[5], gold=[False], head="問題点 5　役目ごとの見張りを掛けられない",
-             body=[P("見張りはサブエージェントの名前で相手を決める。名前はいつも gsd-executor なので、"),
-                   P(("画像を開く・テストを書き換える、を役目ごとに止められず、破られても見つからない。",))],
-             to=(g.x + g.w, g.cy), yrange=(g.y + 6, g.y + g.h - 6), keys=[]),
+             body=[P("見張り（Claude Code の hook）は、サブエージェントの名前で相手を決める。GSD が起こす名前は、どの役目でも gsd-executor。"),
+                   P(("役目ごとに、読める物・書ける物を止められない。",))],
+             to=(g.x + g.w, g.cy), yrange=(g.y + 6, g.y + g.h - 6), keys=["exec_routing"]),
     ]
     bottom = place_problems(d, items, MB - 16)
     return d, max(T + FH, bottom)
@@ -742,22 +748,22 @@ def fig3(Y0):
 X, G, O = RED, GOLD, OK_GREEN
 ROWS = [
     ("工程ごとに、合った道具と手順を持つサブエージェントを起こす",
-     (X, "✕ 起きるのはいつも gsd-executor。役目の違いは依頼文の言葉だけ"),
+     (X, "✕ 起きるのはいつも gsd-executor。役目ごとに道具の違う係を起こせない"),
      (X, "✕ Capability には、起こすサブエージェントを指定する手段が無い"),
      (O, "○ 計画書の agent_hint に書いたサブエージェントを、GSD が起こす"),
      "工程に要る道具・手順を持つサブエージェントに任せられない", ["1689", "planmd"]),
     ("方法論の手順を、作業するサブエージェントに確実に伝える",
-     (G, "△ メインが毎回、依頼文で役目と手順を言い渡す"),
+     (O, "○ agent_skills の手引きで、方法論の手順を gsd-executor に渡せる"),
      (G, "△ メインの書き足しを当てにするしかなく、入る保証が無い"),
      (G, "△ 手順はサブエージェントのファイルにあり、起きた時点で持つ。ただし次のまとまりを流させる書き足し 1 つは保証が無い"),
      "入らないと、方法論の手順を知らずに作る（図3 では途中で止まる）", ["4139", "step275"]),
     ("作った物を、別のサブエージェントに点検させる",
-     (G, "△ 起こし直せば前の会話を持たない。ただし起こし直すのはメイン"),
+     (X, "✕ 計画書 1 本に 1 体だけ。gsd-executor は点検役を起こせない"),
      (X, "✕ gsd-executor はサブエージェントを起こせない"),
      (O, "○ 方法論独自サブエージェントが子を起こし、点検させる"),
      "作った本人が点検するしかなく、見落としが残る", ["tools", "firstparty"]),
     ("作る→点検→直すの繰り返しを、GSD の手順書どおりに回す",
-     (X, "✕ 回すのはメイン。GSD の手順書は計画書 1 本につき 1 体"),
+     (X, "✕ 確かめる役を起こし、ずれを返して直させる手順が GSD に無い"),
      (X, "✕ 往復させる相手がいない"),
      (O, "○ 方法論独自サブエージェントが回す。手順はそのファイルにある"),
      "手順書に無い動きを、メインが毎回守る保証が無い", ["exec_routing"]),
@@ -767,13 +773,13 @@ ROWS = [
      (O, "○ 画像・テスト・実装のコード・書類を、サブエージェントの名前で見張りが止める"),
      "依頼文の決まりだけだと、破られても見つからない", []),
     ("GSD のサブエージェントの決まりと、ぶつからない",
-     (X, "✕ 「作業ごとにコミット・SUMMARY.md を作る・食い違いは自分で直す」の決まりと、役目がぶつかる"),
+     (X, "✕ 「作業ごとにコミット・SUMMARY.md を作る・不具合は自分で直す」の決まりで、点検だけの役にできない"),
      (O, "○ 計画書 1 本を 1 体に最後まで作らせるので、決まりどおり"),
      (O, "○ gsd-executor は起こさない"),
      "どちらが勝つか分からず、点検役がコードを直してしまうことがある", ["executor_md"]),
     ("画面を押して確かめる（つなぎ込みの工程 link）",
-     (G, "△ Playwright MCP が無い。撮って比べるのは撮影スクリプトでできる"),
-     (G, "△ 図1 と同じ。押して確かめる所は作り直し"),
+     (X, "✕ Playwright MCP を持たせられない（Capability でも足せない）"),
+     (G, "△ Playwright MCP が無い。押して確かめる手順は作り直し"),
      (O, ["○ 撮って比べるのは撮影スクリプト（shoot.mjs）。",
           "押して確かめるのは、Playwright MCP を持つ子（visual-verifier）"]),
      "押して確かめる手順を、作り直す必要がある", ["tools"]),
@@ -823,7 +829,8 @@ def table(Y0):
     with d.group("結論"):
         d.shape(34, y + 14, 1450, 48, "rect", fill=("accent2", 20, 80), line=("accent2",), lw=1,
                 text=[[("結論: ", {"bold": True}),
-                       ("図1・図2 の ✕ の多くは、GSD の仕組みで決まっていて、方法論の側では変えられない。", {})],
+                       ("図1 の理想のうち ✕ の所（1・3〜7）は、GSD の仕組みで決まっていて、方法論の側では変えられない。"
+                        "図2 でも多くは ✕ のまま。", {})],
                       [("→ 図3 の形（agent_hint で方法論独自サブエージェントを起こす）で進める。"
                         "図3 でも 2 は △ が残り、9 は引き受けた手間。", {})]],
                 size=11, font=UD, color="000000", align="l", anchor="ctr", ins=(10, 2, 8, 2), name="結論")
@@ -841,8 +848,7 @@ def head():
     d.text(26, 0, 1500, 44, "GSD に独自処理を挟む方法 ― 理想の形から、今の方法論の形まで", size=26, font=None,
            color="000000", wrap="none", name="見出し")
     d.text(26, 46, 1500, 24,
-           "結論: 図1・図2 は、GSD の仕組みのために、工程ごとにサブエージェントを選べず、役目ごとの見張りも掛けられないので採らない。"
-           "図3 を採る。",
+           "結論: 図1 の理想の形のうち、赤い所は GSD の仕組みのためにできない。図2 でも埋まらないので、図3 を採る。",
            size=13, font=UD, color="000000", wrap="none", name="見出し（結論）")
     d.text(26, 70, 1500, 22,
            "GSD: AI に計画書を書かせてから作らせる道具。　メイン: 人と話す AI。　"
