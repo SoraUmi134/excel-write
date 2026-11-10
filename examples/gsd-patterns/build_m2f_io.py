@@ -48,11 +48,11 @@ def note(d, x, y, text, color=RED, w=CW, name="一行の注"):
     d.text(x, y, w, 16, text, size=9, font=UD, color=color, wrap="none", name=name)
 
 
-def tip(d, x, y, n, text):
+def tip(d, x, y, n, text, h=44):
     with d.group(f"工夫{n}"):
         d.shape(x, y, 22, 22, "ellipse", fill=NAVY, line=None, text=[[(str(n), {"bold": True})]], size=11,
                 color="FFFFFF", font=YU, ins=(0, 0, 0, 0), name="番号")
-        d.text(x + 28, y - 2, TIP_W - 30, 44, text, size=10, font=UD, color="000000", name="工夫の文")
+        d.text(x + 28, y - 2, TIP_W - 30, h, text, size=10, font=UD, color="000000", name="工夫の文")
 
 
 def badge(d, cx, y, n):
@@ -97,7 +97,7 @@ def build_io(d, Y):
     d.text(26, Y + 14, 1700, 40, [[("図2　図1 の点線の枠（(4) execute の中）を、工程ごとに詳しく — 係へ何を渡し、何が返るか", {})]],
            size=24, font=None, color="000000", wrap="none", name="見出し（2 枚目）")
     lanes = ["prep", "read", "build", "link"]
-    hs = {"prep": 175, "read": 125, "build": 215, "link": 180}
+    hs = {"prep": 175, "read": 125, "build": 235, "link": 180}
     top = Y + 62
     total = sum(hs.values())
     d.shape(34, top, 1790, total + 20, "rect", fill=None, line=("tx2",), lw=2.25, name="枠（2 枚目）")
@@ -165,36 +165,49 @@ def build_io(d, Y):
     read(d, (ver, 1), (src, 3))
     mk = image(d, COLS[4] + 20, y + 14, [[("mock.png", {"bold": True})], "お手本の画像"], name="mock.png（build）")
     shot = image(d, COLS[4] + 20, y + 56, [[("screenshot.png", {"bold": True})], "撮った画面（shoot.mjs）"], name="撮った画面")
-    with d.group("3 枚組"):
+    # visual-diff.mjs が mock.png と screenshot.png を画面全体で比べて合否の数字を出し、見比べ用の切り出し（compare/）を書く
+    vd = tool(d, 1340, y + 38, [[("道具 visual-diff.mjs", {"bold": True})], "画面全体で比べ、合否を出す"], w=160,
+              name="道具 visual-diff.mjs")
+    read(d, (vd, 1), (mk, 3))
+    read(d, (vd, 1), (shot, 3))
+    CMP_W, CMP_H = 250, 54
+    with d.group("compare/ 見比べ用の切り出し"):
         for k in (2, 1):
-            d.shape(COLS[4] + 20 + 4 * k, y + 98 + 3 * k, CW, 40, "foldedCorner", fill=IMG, line=IMG_LINE, lw=0.75,
+            d.shape(COLS[4] + 20 + 4 * k, y + 118 + 3 * k, CMP_W, CMP_H, "foldedCorner", fill=IMG, line=IMG_LINE, lw=0.75,
                     adj=12000, name="重なり")
-        tiles = image(d, COLS[4] + 20, y + 98, [[("compare/ の 3 枚組", {"bold": True})], "お手本・作った画面・差分"],
-                      h=40, name="3 枚組")
+        cmp = image(d, COLS[4] + 20, y + 118, [[("compare/ 見比べ用の切り出し（タイルと拡大）", {"bold": True})],
+                                                "mock.png と screenshot.png を", "同じ所で切った組＋差分"],
+                    w=CMP_W, h=CMP_H, name="compare/ 見比べ用の切り出し")
+    write(d, (vd, 2), (cmp, 0))
+    note(d, COLS[4] + 20, y + 184, "合否には使わない。visual-verifier が細かい所を見比べるためだけ", color="595959", w=380)
     read(d, (ver, 3), (mk, 1))
     write(d, (ver, 3), (shot, 1))
-    write(d, (ver, 3), (tiles, 1))
-    back(d, [(ver.cx, ver.y + ver.h + 18), (ver.cx, y + 190), (imp.cx, y + 190), (imp.cx, y + 122)])
+    read(d, (ver, 3), (cmp, 1))
+    back(d, [(ver.cx, ver.y + ver.h + 18), (ver.cx, y + 210), (imp.cx, y + 210), (imp.cx, y + 122)])
     d.connector((ver.cx, ver.y + ver.h), (ver.cx, ver.y + ver.h + 18), color=BACK, lw=AW, tail=False, name="返す")
-    d.text(imp.cx + 10, y + 172, 460, 18, "指摘を文字で返す（画面の座標と digest の値）。合うまで最大 5 周",
+    d.text(imp.cx + 10, y + 192, 460, 18, "指摘を文字で返す（画面の座標と digest の値）。合うまで最大 5 周",
            size=9, font=UD, color="7030A0", wrap="none", name="返すの説明")
     badge(d, COLS[3] + CW + 12, y + 24, 4)
-    badge(d, COLS[4] + 20 + CW + 22, y + 108, 6)
-    badge(d, COLS[3] + CW - 6, y + 102, 5)
-    tip(d, TIP_X, y + 12, 4, "画像で比べるのは visual-verifier だけ。実装の係は画像を見ない（役目を分ける）")
-    tip(d, TIP_X, y + 74, 5, "合否は数字で決める: 違う画素 2% 以下・塊 500px 以下・部品ごと 50% 以下")
-    tip(d, TIP_X, y + 136, 6, "大きい画面は長辺 1568px 以下のタイルに分け、3 枚組と拡大で見せる（縮むと細部が潰れるため）")
+    badge(d, 1352, y + 12, 5)
+    badge(d, COLS[4] + 20 + CMP_W + 24, y + 130, 6)
+    tip(d, TIP_X, y + 8, 4, "画像で比べるのは visual-verifier だけ。実装の係は画像を見ない（役目を分ける）")
+    tip(d, TIP_X, y + 62, 5, "合否は画面全体の画像から数字で決める: 違う画素 2% 以下・塊 500px 以下・部品ごと 50% 以下")
+    tip(d, TIP_X, y + 118, 6, ["画面の大きさに応じて、Claude が縮めずに読める大きさ（長辺 1568px 以下）に何枚かに切る",
+                               "切った所ごとに、お手本・実装・差分を並べる（小さい画面なら 1 組）。差の大きい所は拡大も添える（縮むと細部が潰れるため）"],
+        h=104)
 
     # ---- link: 画面どうしを仮につなぐ ----
     y = ys["link"]
     lane_title(d, y, hs["link"], "link", "画面どうしを\n仮につなぐ\nsdd-relay-link")
     lin = file(d, COLS[0], y + 40, [[("design-dna.md", {"bold": True})], "＋ 状態モックの digest"], h=40, name="dna（link）")
     ext2 = agent(d, COLS[1], y + 37, [[("dna-extractor", {"bold": True})], "つなぎ表を下書きする"], name="dna-extractor（link）")
+    note(d, COLS[1], y + 87, "✕ 画像は開かない（見張りが止める）")
     read(d, (ext2, 1), (lin, 3))
     table = file(d, COLS[2], y + 26, [[("つなぎ表", {"bold": True})], "agent-os/prototype/<区切り>.md",
                                        "移動・引き継ぎ・入力チェック・状態"], h=64, name="つなぎ表")
     write(d, (ext2, 3), (table, 1))
     imp2 = agent(d, COLS[3], y + 37, [[("implementer", {"bold": True})], "画面ごとに、仮のつなぎを書く"], name="implementer（link）")
+    note(d, COLS[3], y + 87, "✕ 画像は開かない（見張りが止める）")
     read(d, (imp2, 1), (table, 3))
     proto = file(d, COLS[4], y + 26, [[("src/prototype/", {"bold": True})], "画面の移動・値の引き継ぎ",
                                        "目印 // PROTOTYPE: 番号"], h=64, name="試作のつなぎ")
@@ -203,7 +216,7 @@ def build_io(d, Y):
                                       "（Playwright で、移る・値が出るか）"], h=58, name="visual-verifier（link）")
     read(d, (ver2, 1), (proto, 3))
     d.connector((ver2.cx, ver2.y + ver2.h), (ver2.cx, ver2.y + ver2.h + 24), color=BACK, lw=AW, tail=False, name="返す")
-    back(d, [(ver2.cx, ver2.y + ver2.h + 24), (ver2.cx, y + 158), (imp2.cx, y + 158), (imp2.cx, imp2.y + imp2.h)])
+    back(d, [(ver2.cx, ver2.y + ver2.h + 24), (ver2.cx, y + 158), (imp2.cx, y + 158), (imp2.cx, y + 107)])
     d.text(imp2.cx + 10, y + 140, 300, 18, "足りなければ、その画面のつなぎに戻す。最大 5 周", size=9, font=UD, color="7030A0",
            wrap="none", name="返すの説明")
     badge(d, COLS[4] + CW - 6, y + 14, 7)
